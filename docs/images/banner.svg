@@ -1,0 +1,108 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 640" width="1280" height="640"
+     font-family="'Helvetica Neue', Helvetica, Arial, sans-serif">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0c0a14"/>
+      <stop offset="0.55" stop-color="#100e1c"/>
+      <stop offset="1" stop-color="#0b0a12"/>
+    </linearGradient>
+    <linearGradient id="mark" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#8b5cf6"/>
+      <stop offset="1" stop-color="#a855f7"/>
+    </linearGradient>
+    <linearGradient id="word" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="0.6" stop-color="#ece9f7"/>
+      <stop offset="1" stop-color="#c084fc"/>
+    </linearGradient>
+    <radialGradient id="glowA" cx="0.15" cy="0.18" r="0.5">
+      <stop offset="0" stop-color="#a855f7" stop-opacity="0.26"/>
+      <stop offset="1" stop-color="#a855f7" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glowB" cx="0.85" cy="0.85" r="0.5">
+      <stop offset="0" stop-color="#3b82f6" stop-opacity="0.18"/>
+      <stop offset="1" stop-color="#3b82f6" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- backdrop -->
+  <rect width="1280" height="640" rx="28" fill="url(#bg)"/>
+  <rect width="1280" height="640" rx="28" fill="url(#glowA)"/>
+  <rect width="1280" height="640" rx="28" fill="url(#glowB)"/>
+  <rect x="1.5" y="1.5" width="1277" height="637" rx="26.5" fill="none" stroke="#2a2444" stroke-width="2"/>
+
+  <!-- MCP node-graph motif (top-right) -->
+  <g stroke="#3b3463" stroke-width="2" fill="none" opacity="0.8">
+    <line x1="1060" y1="96"  x2="1168" y2="150"/>
+    <line x1="1060" y1="96"  x2="980"  y2="180"/>
+    <line x1="1168" y1="150" x2="1120" y2="248"/>
+    <line x1="980"  y1="180" x2="1120" y2="248"/>
+    <line x1="980"  y1="180" x2="1060" y2="96"/>
+    <line x1="1168" y1="150" x2="1210" y2="236"/>
+  </g>
+  <g opacity="0.5">
+    <circle cx="1060" cy="96"  r="20" fill="#a855f7" opacity="0.18"/>
+    <circle cx="1168" cy="150" r="24" fill="#3b82f6" opacity="0.16"/>
+    <circle cx="980"  cy="180" r="18" fill="#f43f5e" opacity="0.16"/>
+    <circle cx="1120" cy="248" r="22" fill="#c084fc" opacity="0.16"/>
+  </g>
+  <g>
+    <circle cx="1060" cy="96"  r="9"  fill="#a855f7"/>
+    <circle cx="1168" cy="150" r="11" fill="#3b82f6"/>
+    <circle cx="980"  cy="180" r="8"  fill="#f43f5e"/>
+    <circle cx="1120" cy="248" r="10" fill="#c084fc"/>
+    <circle cx="1210" cy="236" r="7"  fill="#22d3ee"/>
+  </g>
+
+  <!-- logo mark -->
+  <g transform="translate(80,84)">
+    <rect x="-6" y="-6" width="156" height="156" rx="40" fill="#a855f7" opacity="0.12"/>
+    <rect width="144" height="144" rx="36" fill="url(#mark)"/>
+    <g transform="translate(33,30) scale(3.4)" fill="none" stroke="#ffffff" stroke-width="2"
+       stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 3l7 3v5c0 4.5-3 7.6-7 9-4-1.4-7-4.5-7-9V6z"/>
+      <path d="M9 12l2 2 4-4"/>
+    </g>
+  </g>
+
+  <!-- wordmark + taglines -->
+  <text x="252" y="150" font-size="80" font-weight="800" fill="url(#word)" letter-spacing="-1.5">PurpleMCP</text>
+  <text x="256" y="200" font-size="25" font-weight="700" fill="#c084fc" letter-spacing="3.5">BUILD IT · ATTACK IT · DEFEND IT</text>
+  <text x="257" y="240" font-size="20" fill="#a6a1c8">A purple-team security lab for the Model Context Protocol</text>
+
+  <!-- pillar cards -->
+  <g>
+    <!-- BUILD -->
+    <g transform="translate(80,316)">
+      <rect width="357" height="172" rx="16" fill="#a855f7" fill-opacity="0.08" stroke="#a855f7" stroke-opacity="0.42"/>
+      <circle cx="32" cy="38" r="8" fill="#a855f7"/>
+      <text x="52" y="45" font-size="22" font-weight="800" fill="#c084fc">BUILD</text>
+      <text x="28" y="92"  font-size="16" fill="#cdc9e6">Connect any LLM — local Ollama or</text>
+      <text x="28" y="118" font-size="16" fill="#cdc9e6">cloud Claude · GPT · Gemini — to</text>
+      <text x="28" y="144" font-size="16" fill="#cdc9e6">real MCP servers.</text>
+    </g>
+    <!-- ATTACK -->
+    <g transform="translate(461,316)">
+      <rect width="357" height="172" rx="16" fill="#f43f5e" fill-opacity="0.08" stroke="#f43f5e" stroke-opacity="0.42"/>
+      <circle cx="32" cy="38" r="8" fill="#f43f5e"/>
+      <text x="52" y="45" font-size="22" font-weight="800" fill="#f43f5e">ATTACK</text>
+      <text x="28" y="92"  font-size="16" fill="#cdc9e6">23 real, runnable exploits against</text>
+      <text x="28" y="118" font-size="16" fill="#cdc9e6">intentionally-vulnerable MCP</text>
+      <text x="28" y="144" font-size="16" fill="#cdc9e6">servers — lab-gated.</text>
+    </g>
+    <!-- DEFEND -->
+    <g transform="translate(842,316)">
+      <rect width="357" height="172" rx="16" fill="#3b82f6" fill-opacity="0.08" stroke="#3b82f6" stroke-opacity="0.42"/>
+      <circle cx="32" cy="38" r="8" fill="#3b82f6"/>
+      <text x="52" y="45" font-size="22" font-weight="800" fill="#3b82f6">DEFEND</text>
+      <text x="28" y="92"  font-size="16" fill="#cdc9e6">18 reusable guardrails + hardened</text>
+      <text x="28" y="118" font-size="16" fill="#cdc9e6">twins that block every attack, with</text>
+      <text x="28" y="144" font-size="16" fill="#cdc9e6">a live explain-and-verify lab.</text>
+    </g>
+  </g>
+
+  <!-- stat strip -->
+  <g font-size="17" font-weight="600" fill="#8983ad" letter-spacing="0.4">
+    <text x="82" y="556">23 attacks &#160;·&#160; 18 guardrails &#160;·&#160; 16 OWASP/CWE mappings &#160;·&#160; 5 LLM providers &#160;·&#160; CLI + desktop app</text>
+  </g>
+</svg>

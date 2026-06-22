@@ -1,0 +1,30 @@
+cff-version: 1.2.0
+message: "If you use PurpleMCP in academic or applied research, please cite it."
+title: "PurpleMCP: A Purple-Team Lab and Benchmark for Model Context Protocol Security"
+abstract: >-
+  PurpleMCP is a reproducible lab for building, attacking, and defending Model
+  Context Protocol (MCP) servers. It pairs 21 intentionally-vulnerable servers
+  and working exploits with hardened twins built on a reusable guardrails
+  library, maps every module to OWASP LLM Top 10 / CWE / MITRE ATLAS, and ships
+  PurpleMCP-Bench — a deterministic guardrail-effectiveness benchmark plus an
+  optional LLM-susceptibility evaluation — with machine-readable (JSON/SARIF)
+  output and a desktop GUI.
+type: software
+authors:
+  - family-names: Parshad
+    given-names: Kailash
+repository-code: "https://github.com/at0m-b0mb/PurpleMCP"
+url: "https://github.com/at0m-b0mb/PurpleMCP"
+license: MIT
+version: "0.5.0"
+date-released: "2026-06-05"
+keywords:
+  - model context protocol
+  - mcp
+  - llm security
+  - prompt injection
+  - red team
+  - blue team
+  - owasp llm top 10
+  - mitre atlas
+  - benchmark

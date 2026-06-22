@@ -1,0 +1,42 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "purplemcp"
+version = "0.6.0"
+description = "PurpleMCP-Lab — a purple-team lab for building, attacking, and defending Model Context Protocol (MCP) servers with local + cloud LLMs. Sorbet edition: pastel UI, live-API servers, 25 attacks."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "Kailash Parshad" }]
+keywords = [
+  "mcp", "model-context-protocol", "llm", "ai", "security",
+  "red-team", "blue-team", "ollama", "anthropic", "openai",
+]
+dependencies = [
+  "mcp[cli]>=1.27",
+  "ollama>=0.6",
+  "anthropic>=0.105",
+  "openai>=2.40",
+  "google-genai>=2.8",
+  "httpx>=0.28",
+  "python-dotenv>=1.0",
+  "rich>=15.0",
+  "typer>=0.26",
+  "pydantic>=2.10",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=9.0"]
+gui = ["pyside6>=6.7"]
+
+[project.scripts]
+purplemcp = "purplemcp.cli:main"
+purplemcp-gui = "purplemcp.gui:run"
+
+[tool.setuptools.packages.find]
+include = ["purplemcp*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
