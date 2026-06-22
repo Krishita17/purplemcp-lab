@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="docs/images/banner.png" alt="PurpleMCP — build it, attack it, defend it" width="820">
+<img src="docs/images/banner.png" alt="PurpleMCP-Lab — build it, attack it, defend it" width="820">
 
 <br>
 
@@ -25,15 +25,16 @@ All from a polished desktop console *or* the CLI — now in a light **Sorbet** (
 
 ---
 
-PurpleMCP teaches the full lifecycle of the **Model Context Protocol** — the open standard that lets
-AI models call real tools. It does three things, and the third is what makes it *purple* (red team +
-blue team together):
+**PurpleMCP-Lab** is a hands-on workbench for the **Model Context Protocol** — the open standard that
+lets AI models call real tools. Wire up a model, watch it drive live tools, then learn the security
+story the hard way: break the tools, then harden them. It's *purple* because red team and blue team
+live side by side — every exploit ships next to the fix that stops it. Three pillars:
 
 | Pillar | What it gives you |
 | --- | --- |
-| 🏗️ **Build & Connect** | A multi-provider host that connects **local models (Ollama)** *and* **cloud models (Claude, GPT, Gemini, OpenRouter)** to MCP servers — plus clean example servers and a one-command installer. |
-| 🔴 **Attack** *(lab only)* | Intentionally-vulnerable MCP servers + working exploits for **23** MCP threat classes, so you can *see* how the protocol gets abused. |
-| 🔵 **Defend** | A reusable hardening library, hardened twins of every vulnerable server, a static **security scanner**, and a **Defense Lab that runs the defense for real** — explanation on one side, live protection on the other. |
+| 🏗️ **Build & Connect** | A multi-provider host that drives **local models (Ollama)** *and* **cloud models (Claude, GPT, Gemini, OpenRouter)** against MCP servers — including **eight** bundled servers, several wired to **real, live APIs** (weather, crypto, web search, threat-intel). |
+| 🔴 **Attack** *(lab only)* | Intentionally-vulnerable MCP servers + working exploits for **25** threat classes, so you can *watch* the protocol get abused — never simulated, always runnable. |
+| 🔵 **Defend** | A reusable hardening library (**20 guardrails**), a hardened twin of every vulnerable server, a static **security scanner**, and a **Defense Lab that runs the fix for real** — read it on one side, watch it block the payload on the other. |
 
 > [!WARNING]
 > The [`attacks/`](attacks/) folder contains **intentionally vulnerable code** for security education.
@@ -42,7 +43,7 @@ blue team together):
 
 > [!TIP]
 > **New to MCP security? Start here →** **[The MCP Security Handbook](docs/MCP-SECURITY-GUIDE.md)** —
-> a complete, in-depth guide to the protocol, the 23 attack classes, and the 18 guardrails that stop
+> a complete, in-depth guide to the protocol, the 25 attack classes, and the 20 guardrails that stop
 > them. (Also readable in-app via the **Learn** page.)
 
 ---
@@ -171,7 +172,7 @@ Want Claude/GPT instead of local? Put the key in `.env` and add `--provider anth
 
 ## 🖥️ Desktop GUI
 
-`purplemcp gui` opens a native, dark **purple-team security console** (PySide6) over the exact same core
+`purplemcp gui` opens a native, light **Sorbet purple-team console** (PySide6) over the exact same core
 the CLI uses — no separate server, no browser. It organizes all of PurpleMCP into clear sections:
 
 | Section | Page | What it does |
@@ -182,7 +183,7 @@ the CLI uses — no separate server, no browser. It organizes all of PurpleMCP i
 | Connect | **MCP Servers** | View the registry, **add your own servers**, one-click add from a **catalog of real published servers**, and install into Claude Desktop. |
 | Connect | **Tool Explorer** | Browse a server's tools, inspect each JSON schema, and call any tool through an auto-generated form — no model required. |
 | Connect | **Chat Playground** | Chat with any provider/model and watch the agent's **tool calls + results stream live** as inline cards. |
-| Red team | **Attack Lab** | Browse all 23 attacks, **run the real exploit** with live output, and copy/run the commands from a built-in **manual terminal** (lab-gated). |
+| Red team | **Attack Lab** | Browse all 25 attacks, **run the real exploit** with live output, and copy/run the commands from a built-in **manual terminal** (lab-gated). |
 | Blue team | **Defense Lab** | **Explanation on the left, the defense running on the right**: the guardrail mechanism + source, a **Verify** that replays the payload (exploited → blocked), and a live **manual terminal**. |
 | Blue team | **Security Scanner** | Run the static + dynamic scanner with a severity chart, summary pills, and per-finding cards. |
 | Research | **Research** | Threat taxonomy (OWASP/CWE/ATLAS) + one-click benchmark with the defense matrix and JSON/MD export. |

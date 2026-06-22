@@ -13,6 +13,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from ... import __version__
 from ..icons import icon, pixmap
 from ..theme import PALETTE
 
@@ -104,9 +105,9 @@ class NavSidebar(QWidget):
         brand.addWidget(LogoMark())
         tbox = QVBoxLayout()
         tbox.setSpacing(0)
-        t = QLabel("PurpleMCP")
+        t = QLabel("PurpleMCP-Lab")
         t.setObjectName("BrandTitle")
-        s = QLabel("SECURITY CONSOLE")
+        s = QLabel("SORBET · PURPLE TEAM")
         s.setObjectName("BrandSub")
         tbox.addWidget(t)
         tbox.addWidget(s)
@@ -146,7 +147,7 @@ class NavSidebar(QWidget):
         foot.addStretch(1)
         layout.addLayout(foot)
 
-        ver = QLabel("v0.5 · purple-team")
+        ver = QLabel(f"v{__version__} · sorbet")
         ver.setObjectName("Faint")
         ver.setStyleSheet(f"color: {PALETTE['text_faint']}; font-size: 10px;")
         layout.addWidget(ver)

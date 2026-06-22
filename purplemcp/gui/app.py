@@ -42,7 +42,7 @@ class MainWindow(QMainWindow):
         self._loop = loop
         self._settings = QSettings("PurpleMCP", "PurpleMCP")
         self._current_key = "dashboard"
-        self.setWindowTitle("PurpleMCP — Security Console")
+        self.setWindowTitle("PurpleMCP-Lab — Sorbet Console")
         self.resize(1200, 780)
         self.setMinimumSize(1000, 660)
 
@@ -144,7 +144,7 @@ class MainWindow(QMainWindow):
         ))
         commands.append(("Refresh dashboard", "Reload providers & servers", self._dashboard.refresh))
         commands.append(("Keyboard shortcuts", "Show all key bindings", self._open_shortcuts))
-        commands.append(("About PurpleMCP", "Version, links, and lab stats", self._open_about))
+        commands.append(("About PurpleMCP-Lab", "Version, links, and lab stats", self._open_about))
         self._palette = CommandPalette(commands, self)
         self._palette.show_centered()
 
@@ -165,8 +165,8 @@ class MainWindow(QMainWindow):
 
 
 def run() -> int:
-    QApplication.setApplicationName("PurpleMCP")
-    QApplication.setApplicationDisplayName("PurpleMCP")
+    QApplication.setApplicationName("PurpleMCP-Lab")
+    QApplication.setApplicationDisplayName("PurpleMCP-Lab")
     app = QApplication.instance() or QApplication(sys.argv)
 
     font = QFontDatabase.systemFont(QFontDatabase.SystemFont.GeneralFont)

@@ -43,10 +43,10 @@ class AboutDialog(QDialog):
         head.addWidget(LogoMark(46))
         tbox = QVBoxLayout()
         tbox.setSpacing(1)
-        title = QLabel("PurpleMCP")
+        title = QLabel("PurpleMCP-Lab")
         title.setStyleSheet(f"font-size: 20px; font-weight: 800; color: {PALETTE['text']};")
         tbox.addWidget(title)
-        ver = QLabel(f"v{__version__} · purple-team security console")
+        ver = QLabel(f"v{__version__} · sorbet · purple-team console")
         ver.setStyleSheet(f"color: {PALETTE['text_faint']}; font-size: 12px;")
         tbox.addWidget(ver)
         head.addLayout(tbox)
@@ -77,8 +77,8 @@ class AboutDialog(QDialog):
             lay.addWidget(chip)
 
         repo = QLabel(
-            '<a href="https://github.com/at0m-b0mb/PurpleMCP" '
-            f'style="color:{PALETTE["purple_hi"]};">github.com/at0m-b0mb/PurpleMCP</a>'
+            '<a href="https://github.com/Krishita17/purplemcp-lab" '
+            f'style="color:{PALETTE["purple_hi"]};">github.com/Krishita17/purplemcp-lab</a>'
         )
         repo.setOpenExternalLinks(True)
         lay.addWidget(repo)

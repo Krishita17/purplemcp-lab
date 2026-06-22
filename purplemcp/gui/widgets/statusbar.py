@@ -5,6 +5,7 @@ from __future__ import annotations
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QHBoxLayout, QLabel, QWidget
 
+from ... import __version__
 from ...config import default_provider_name
 from ..async_bridge import ACTIVITY
 from ..theme import PALETTE
@@ -34,7 +35,7 @@ class StatusBar(QWidget):
         prov = QLabel(f"default model: {default_provider_name()}")
         lay.addWidget(prov)
         lay.addWidget(_sep())
-        ver = QLabel("PurpleMCP v0.5")
+        ver = QLabel(f"PurpleMCP-Lab v{__version__}")
         lay.addWidget(ver)
 
         if lab_state is not None:
