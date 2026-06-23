@@ -10,8 +10,8 @@ from __future__ import annotations
 
 import datetime as _dt
 
-from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QColor
+from PySide6.QtCore import QRectF, Qt, Signal
+from PySide6.QtGui import QColor, QPainter, QPen
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QFrame,
@@ -26,6 +26,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from ... import environment
 from ...config import REPO_ROOT, load_providers, load_registry
 from ...taxonomy import OWASP_LLM_TOP10, TAXONOMY, owasp_coverage
 from ..async_bridge import AsyncLoop, run_job
@@ -119,6 +120,31 @@ def _make_table(headers: list[str]) -> QTableWidget:
     return t
 
 
+def _readiness_pill(check) -> QWidget:
+    """A status pill for one environment.Check (live readiness data)."""
+    color = PALETTE["green"] if check.ok else PALETTE["amber"]
+    pill = QFrame()
+    pill.setStyleSheet(
+        f"background: {rgba(color, 0.12)}; border: 1px solid {rgba(color, 0.4)}; border-radius: 10px;"
+    )
+    lay = QVBoxLayout(pill)
+    lay.setContentsMargins(12, 8, 12, 8)
+    lay.setSpacing(1)
+    top = QHBoxLayout()
+    top.setSpacing(6)
+    dot = QLabel("●")
+    dot.setStyleSheet(f"color: {color}; font-size: 11px;")
+    top.addWidget(dot)
+    nm = QLabel(check.name)
+    nm.setStyleSheet(f"color: {PALETTE['text']}; font-weight: 700; font-size: 12px;")
+    top.addWidget(nm)
+    top.addStretch(1)
+    lay.addLayout(top)
+    detail = check.detail if len(check.detail) <= 38 else check.detail[:37] + "…"
+    lay.addWidget(muted(detail, faint=True))
+    return pill
+
+
 class HBarChart(QWidget):
     """A lightweight horizontal bar chart built from frames (renders offscreen)."""
 
@@ -154,6 +180,56 @@ class HBarChart(QWidget):
             row.addWidget(val)
             row.addStretch(1)
             self._lay.addLayout(row)
+
+
+class Donut(QWidget):
+    """A small painted donut/ring gauge showing a fraction (0..1) with a caption."""
+
+    def __init__(self, fraction: float, caption: str, sub: str, color: str, parent=None) -> None:
+        super().__init__(parent)
+        self._frac = max(0.0, min(1.0, fraction))
+        self._caption = caption
+        self._sub = sub
+        self._color = color
+        self.setFixedSize(168, 168)
+
+    def set_fraction(self, fraction: float, sub: str | None = None) -> None:
+        self._frac = max(0.0, min(1.0, fraction))
+        if sub is not None:
+            self._sub = sub
+        self.update()
+
+    def paintEvent(self, event) -> None:  # noqa: N802
+        p = QPainter(self)
+        p.setRenderHint(QPainter.Antialiasing)
+        rect = QRectF(20, 14, 128, 128)
+        track = QPen(QColor(PALETTE["surface_hi"]))
+        track.setWidth(15)
+        track.setCapStyle(Qt.FlatCap)
+        p.setPen(track)
+        p.drawArc(rect, 0, 360 * 16)
+        arc = QPen(QColor(self._color))
+        arc.setWidth(15)
+        arc.setCapStyle(Qt.RoundCap)
+        p.setPen(arc)
+        p.drawArc(rect, 90 * 16, -int(360 * 16 * self._frac))
+        p.setPen(QColor(PALETTE["text"]))
+        f = p.font()
+        f.setPointSize(20)
+        f.setBold(True)
+        p.setFont(f)
+        p.drawText(rect, Qt.AlignCenter, f"{round(self._frac * 100)}%")
+        f.setPointSize(11)
+        f.setBold(True)
+        p.setFont(f)
+        p.setPen(QColor(PALETTE["text"]))
+        p.drawText(QRectF(0, 142, 168, 16), Qt.AlignCenter, self._caption)
+        f.setPointSize(9)
+        f.setBold(False)
+        p.setFont(f)
+        p.setPen(QColor(PALETTE["text_faint"]))
+        p.drawText(QRectF(0, 156, 168, 12), Qt.AlignCenter, self._sub)
+        p.end()
 
 
 class ConfusionMatrix(QWidget):
@@ -317,28 +393,34 @@ class DashboardPage(QWidget):
 
         root.addWidget(HeroCard())
 
-        # stat tiles
+        # 1) live readiness checks (real environment introspection)
+        root.addWidget(self._build_readiness_card())
+
+        # 2) stat tiles — defense-first ordering (re-sequenced)
         stats = QHBoxLayout()
         stats.setSpacing(14)
-        self._providers_stat = StatCard("0 / 0", "Providers ready", "cpu", PALETTE["green"])
-        self._servers_stat = StatCard("0", "MCP servers", "server", PALETTE["violet"])
-        self._labs_stat = StatCard("0", "Attack labs", "skull", PALETTE["red"])
-        self._twins_stat = StatCard(str(_count_hardened_twins()), "Hardened twins", "lock", PALETTE["blue"])
         self._guardrails_stat = StatCard(str(_count_guardrails()), "Guardrails", "tools", PALETTE["purple"])
-        for card in (self._providers_stat, self._servers_stat, self._labs_stat,
-                     self._twins_stat, self._guardrails_stat):
+        self._twins_stat = StatCard(str(_count_hardened_twins()), "Hardened twins", "lock", PALETTE["blue"])
+        self._labs_stat = StatCard("0", "Attack labs", "skull", PALETTE["red"])
+        self._servers_stat = StatCard("0", "MCP servers", "server", PALETTE["violet"])
+        self._providers_stat = StatCard("0 / 0", "Providers ready", "cpu", PALETTE["green"])
+        for card in (self._guardrails_stat, self._twins_stat, self._labs_stat,
+                     self._servers_stat, self._providers_stat):
             stats.addWidget(card)
         root.addLayout(stats)
 
-        # security-metrics panel (the headline feature)
-        root.addWidget(self._build_metrics_card())
+        # 3) at-a-glance donut gauges
+        root.addWidget(self._build_charts_card())
 
-        # two-column: OWASP coverage chart | attack mix table
+        # 4) two-column: OWASP coverage chart | attack mix table
         mid = QHBoxLayout()
         mid.setSpacing(16)
         mid.addWidget(self._build_coverage_card(), 3)
         mid.addWidget(self._build_mix_card(), 2)
         root.addLayout(mid)
+
+        # 5) security-metrics panel
+        root.addWidget(self._build_metrics_card())
 
         # quick actions
         qa = Card("Quick actions", "Jump straight in")
@@ -367,6 +449,43 @@ class DashboardPage(QWidget):
         outer.setContentsMargins(0, 0, 0, 0)
         outer.addWidget(make_scroll(inner))
         self.refresh()
+
+    # -- readiness -------------------------------------------------------- #
+    def _build_readiness_card(self) -> Card:
+        card = Card("Lab readiness", "Live environment checks — Python, providers, Ollama, servers, GUI, lab")
+        self._readiness_grid = QGridLayout()
+        self._readiness_grid.setHorizontalSpacing(10)
+        self._readiness_grid.setVerticalSpacing(10)
+        card.body.addLayout(self._readiness_grid)
+        return card
+
+    def _refresh_readiness(self) -> None:
+        clear_layout(self._readiness_grid)
+        try:
+            checks = environment.gather()
+        except Exception:  # noqa: BLE001 - never let a probe break the dashboard
+            checks = []
+        for i, chk in enumerate(checks):
+            self._readiness_grid.addWidget(_readiness_pill(chk), i // 3, i % 3)
+
+    # -- donut gauges ----------------------------------------------------- #
+    def _build_charts_card(self) -> Card:
+        card = Card("At a glance", "Coverage & composition of the lab")
+        cov = owasp_coverage()
+        covered = sum(1 for v in cov.values() if v)
+        total = len(TAXONOMY) or 1
+        high = sum(1 for e in TAXONOMY if e.severity == "HIGH")
+        mcp = sum(1 for e in TAXONOMY if e.family.startswith("MCP"))
+        row = QHBoxLayout()
+        row.setSpacing(22)
+        row.addStretch(1)
+        row.addWidget(Donut(covered / len(OWASP_LLM_TOP10), "OWASP coverage",
+                            f"{covered}/{len(OWASP_LLM_TOP10)} categories", PALETTE["purple"]))
+        row.addWidget(Donut(high / total, "HIGH severity", f"{high}/{total} modules", PALETTE["red"]))
+        row.addWidget(Donut(mcp / total, "MCP-specific", f"{mcp}/{total} modules", PALETTE["violet"]))
+        row.addStretch(1)
+        card.body.addLayout(row)
+        return card
 
     # -- security metrics ------------------------------------------------- #
     def _build_metrics_card(self) -> Card:
@@ -531,6 +650,7 @@ class DashboardPage(QWidget):
 
     # -- data ------------------------------------------------------------- #
     def refresh(self) -> None:
+        self._refresh_readiness()
         providers = load_providers()
         registry = load_registry()
         ready = sum(1 for c in providers.values() if c.ready)

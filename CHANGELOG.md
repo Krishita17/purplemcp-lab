@@ -7,13 +7,15 @@ All notable changes to PurpleMCP. This project adheres loosely to
 ## [0.6.0] — Sorbet edition
 
 ### Added
-- **Redesigned, playful dashboard** — a time-aware greeting, a live **Security
+- **Redesigned, playful dashboard (re-sequenced layout)** — a time-aware greeting,
+  a **Lab readiness** panel driven by live `environment.gather()` checks (Python,
+  providers, Ollama, servers, GUI, lab state), defense-first stat tiles, **donut
+  gauges** (OWASP coverage / HIGH-severity / MCP-specific share), an **OWASP-coverage
+  bar chart**, an **attack-mix** table, provider/server tables, and a live **Security
   metrics** panel that scores the guardrails as binary detectors
-  (**accuracy / precision / recall / F1 / ASR**) by running real attack + benign
-  payloads, a **confusion matrix** (TP/FP/TN/FN), an **ASR bar chart** (vulnerable
-  vs. hardened), an **OWASP-coverage bar chart**, an **attack-mix** table, and
-  provider/server tables. `purplemcp.benchmark.run_detection_metrics` computes it all
-  from live MCP calls — nothing is simulated.
+  (**accuracy / precision / recall / F1 / ASR**) with a **confusion matrix** and an
+  **ASR bar chart**. `purplemcp.benchmark.run_detection_metrics` computes the metrics
+  from real MCP calls — nothing is simulated.
 - **Light "Sorbet" theme (peach · mint · lilac)** — the whole console reskinned from
   the dark palette to a light, summery pastel one, driven entirely from
   `purplemcp.gui.theme.PALETTE`.
