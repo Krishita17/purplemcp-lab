@@ -72,3 +72,26 @@ class TestBenchmark:
         report = asyncio.run(run_guardrail_benchmark(cases=subset))
         assert report.n_cases == 2
         assert report.n_correct == 2, [c.id for c in report.cases if not c.correct]
+
+
+class TestDetectionMetrics:
+    def test_metrics_on_offline_subset(self):
+        from purplemcp.benchmark import run_detection_metrics
+
+        subset = [CASES_BY_ID[i] for i in ("command-injection", "eval-injection", "jwt-none", "xxe")]
+        m = asyncio.run(run_detection_metrics(cases=subset))
+        # every attack lands on the vulnerable server and is blocked on the twin
+        assert m.n_attacks == 4
+        assert m.tp == 4 and m.fn == 0
+        assert m.fp == 0
+        assert m.asr_vulnerable == 100.0
+        assert m.asr_hardened == 0.0
+        assert m.accuracy == 100.0 and m.precision == 100.0 and m.recall == 100.0
+
+    def test_metrics_dict_shape(self):
+        from purplemcp.benchmark import DetectionMetrics, MetricRow
+
+        m = DetectionMetrics(rows=[MetricRow("18", "Eval", True, True, True)])
+        d = m.to_dict()
+        assert d["confusion"] == {"tp": 1, "fp": 0, "tn": 1, "fn": 0}
+        assert d["asr_vulnerable_pct"] == 100.0 and d["asr_hardened_pct"] == 0.0

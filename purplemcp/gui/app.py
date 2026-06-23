@@ -72,7 +72,7 @@ class MainWindow(QMainWindow):
         self._lab.changed.connect(self._sidebar.set_lab_status)
 
         # pages, in nav order
-        self._dashboard = DashboardPage()
+        self._dashboard = DashboardPage(loop)
         self._dashboard.navigate.connect(self._go_and_select)
         self._chat = ChatPage(loop)
         self._pages = {

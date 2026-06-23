@@ -91,6 +91,14 @@ def drive_defense(app, page) -> None:
     pump(app, 0.6)
 
 
+def drive_dashboard(app, page) -> None:
+    # compute the live security metrics so the shot shows real numbers
+    if hasattr(page, "_metrics_btn"):
+        page._metrics_btn.click()
+        pump_until(app, lambda: page._tile_acc._value.text() != "—", 90)
+    pump(app, 0.6)
+
+
 def drive_chat(app, page) -> None:
     # calculator is pre-ticked; start a session and ask a tool-using question.
     page._toggle_session()
@@ -131,6 +139,8 @@ def main() -> int:
             elif key == "explorer" and hasattr(page, "_connect_btn"):
                 page._connect_btn.click()
                 pump_until(app, lambda: page._tool_list.count() > 0, 10)
+            elif key == "dashboard":
+                drive_dashboard(app, page)
             elif key == "attacks":
                 drive_attacks(app, page)
             elif key == "defense":

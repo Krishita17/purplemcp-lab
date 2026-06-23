@@ -82,8 +82,8 @@ A <b>manual terminal</b> below it gives you the exact <code>python …/exploit.p
 <td>
 <img src="docs/images/gui/1_dashboard.png" alt="Dashboard">
 <br><b>🟣 One console for everything</b><br>
-<sub>Provider readiness, registered servers, and lab stats at a glance — then jump straight into any
-of the build / attack / defend / research pages.</sub>
+<sub>A greeting, lab stat tiles, and a live <b>Security metrics</b> panel — accuracy / precision /
+recall / <b>ASR</b> with a confusion matrix and bar charts — plus coverage and attack-mix tables.</sub>
 </td>
 </tr>
 </table>
@@ -177,7 +177,7 @@ the CLI uses — no separate server, no browser. It organizes all of PurpleMCP i
 
 | Section | Page | What it does |
 | --- | --- | --- |
-| Overview | **Dashboard** | Provider readiness, registered servers, and lab stats at a glance. |
+| Overview | **Dashboard** | A time-aware greeting, lab stat tiles, and a live **Security metrics** panel — accuracy / precision / recall / **ASR** with a confusion matrix and bar charts — plus OWASP-coverage and attack-mix tables. |
 | Overview | **Learn** | The full handbook — README + every doc — rendered in-app, no context-switch. |
 | Connect | **AI Models** | Install/run local Ollama models (list, **pull with live progress**, test, delete) and set/test cloud API keys (saved to `.env`). |
 | Connect | **MCP Servers** | View the registry, **add your own servers**, one-click add from a **catalog of real published servers**, and install into Claude Desktop. |

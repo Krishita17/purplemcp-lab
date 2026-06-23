@@ -1,11 +1,20 @@
-"""Dashboard — an at-a-glance overview of providers, servers, and the lab."""
+"""Dashboard — a playful, at-a-glance command center for the lab.
+
+Sorbet edition: a time-aware greeting, lab stat tiles, a live **security-metrics**
+panel (accuracy / precision / recall / ASR with a confusion matrix and bar charts),
+and formatted coverage/mix tables. Everything is real — the metrics come from
+actually running the guardrails as detectors, never from canned numbers.
+"""
 
 from __future__ import annotations
+
+import datetime as _dt
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
     QAbstractItemView,
+    QFrame,
     QGridLayout,
     QHBoxLayout,
     QHeaderView,
@@ -19,17 +28,19 @@ from PySide6.QtWidgets import (
 
 from ...config import REPO_ROOT, load_providers, load_registry
 from ...taxonomy import OWASP_LLM_TOP10, TAXONOMY, owasp_coverage
+from ..async_bridge import AsyncLoop, run_job
 from ..icons import icon
 from ..theme import PALETTE, rgba
 from .common import (
     Badge,
+    BusyBar,
     Card,
     add_shadow,
     button,
     clear_layout,
+    flash,
     hline,
     make_scroll,
-    mono,
     muted,
     page_header,
 )
@@ -39,9 +50,7 @@ def _count_attack_labs() -> int:
     attacks = REPO_ROOT / "attacks"
     if not attacks.exists():
         return 0
-    return sum(
-        1 for p in attacks.iterdir() if p.is_dir() and p.name[:2].isdigit()
-    )
+    return sum(1 for p in attacks.iterdir() if p.is_dir() and p.name[:2].isdigit())
 
 
 def _count_hardened_twins() -> int:
@@ -52,13 +61,27 @@ def _count_hardened_twins() -> int:
 
 
 def _count_guardrails() -> int:
-    """Reusable guardrail modules under purplemcp/guardrails (excluding __init__)."""
     gd = REPO_ROOT / "purplemcp" / "guardrails"
     if not gd.exists():
         return 0
     return sum(1 for p in gd.glob("*.py") if p.name != "__init__.py")
 
 
+def _greeting() -> tuple[str, str]:
+    """A time-aware greeting (text, emoji)."""
+    h = _dt.datetime.now().hour
+    if h < 12:
+        return "Good morning", "🌅"
+    if h < 17:
+        return "Good afternoon", "🌤️"
+    if h < 21:
+        return "Good evening", "🌆"
+    return "Working late", "🌙"
+
+
+# --------------------------------------------------------------------------- #
+#  small reusable widgets
+# --------------------------------------------------------------------------- #
 _TABLE_QSS = f"""
 QTableWidget {{ background: {PALETTE['surface_2']}; border: 1px solid {PALETTE['border']};
     border-radius: 10px; gridline-color: {PALETTE['border']}; }}
@@ -82,6 +105,121 @@ def _tcell(text: str, *, mono: bool = False, color: str | None = None, bold: boo
     return item
 
 
+def _make_table(headers: list[str]) -> QTableWidget:
+    t = QTableWidget(0, len(headers))
+    t.setHorizontalHeaderLabels(headers)
+    t.verticalHeader().setVisible(False)
+    t.setEditTriggers(QAbstractItemView.NoEditTriggers)
+    t.setSelectionMode(QAbstractItemView.NoSelection)
+    t.setFocusPolicy(Qt.NoFocus)
+    t.setShowGrid(False)
+    t.setStyleSheet(_TABLE_QSS)
+    t.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
+    t.horizontalHeader().setStretchLastSection(True)
+    return t
+
+
+class HBarChart(QWidget):
+    """A lightweight horizontal bar chart built from frames (renders offscreen)."""
+
+    def __init__(self, label_w: int = 150, track_w: int = 220, parent=None) -> None:
+        super().__init__(parent)
+        self._label_w = label_w
+        self._track_w = track_w
+        self._lay = QVBoxLayout(self)
+        self._lay.setContentsMargins(0, 2, 0, 2)
+        self._lay.setSpacing(8)
+
+    def set_rows(self, rows: list[tuple[str, float, str]], max_value: float | None = None,
+                 suffix: str = "") -> None:
+        clear_layout(self._lay)
+        mx = max_value or max([v for _, v, _ in rows] + [1])
+        for label, value, color in rows:
+            row = QHBoxLayout()
+            row.setSpacing(10)
+            lbl = QLabel(label)
+            lbl.setFixedWidth(self._label_w)
+            lbl.setStyleSheet(f"color: {PALETTE['text_dim']}; font-size: 12px;")
+            row.addWidget(lbl)
+            track = QFrame()
+            track.setFixedSize(self._track_w, 14)
+            track.setStyleSheet(f"background: {PALETTE['surface_hi']}; border-radius: 7px;")
+            bar = QFrame(track)
+            w = int(self._track_w * (value / mx)) if mx else 0
+            bar.setGeometry(0, 0, max(w, 3), 14)
+            bar.setStyleSheet(f"background: {color}; border-radius: 7px;")
+            row.addWidget(track)
+            val = QLabel(f"{value:g}{suffix}")
+            val.setStyleSheet(f"color: {PALETTE['text']}; font-weight: 700; font-size: 12px;")
+            row.addWidget(val)
+            row.addStretch(1)
+            self._lay.addLayout(row)
+
+
+class ConfusionMatrix(QWidget):
+    """A 2x2 confusion grid: TP / FN / FP / TN."""
+
+    _SPEC = [
+        ("tp", "TP", "attack blocked", "green", 0, 0),
+        ("fn", "FN", "attack leaked", "red", 0, 1),
+        ("fp", "FP", "benign blocked", "amber", 1, 0),
+        ("tn", "TN", "benign allowed", "blue", 1, 1),
+    ]
+
+    def __init__(self, parent=None) -> None:
+        super().__init__(parent)
+        grid = QGridLayout(self)
+        grid.setContentsMargins(0, 0, 0, 0)
+        grid.setSpacing(9)
+        self._cells: dict[str, QLabel] = {}
+        for key, code, desc, color_key, r, c in self._SPEC:
+            color = PALETTE[color_key]
+            cell = QFrame()
+            cell.setStyleSheet(
+                f"background: {rgba(color, 0.12)}; border: 1px solid {rgba(color, 0.42)};"
+                " border-radius: 10px;"
+            )
+            cl = QVBoxLayout(cell)
+            cl.setContentsMargins(12, 9, 12, 9)
+            cl.setSpacing(0)
+            num = QLabel("—")
+            num.setStyleSheet(f"font-size: 22px; font-weight: 800; color: {color};")
+            top = QHBoxLayout()
+            top.addWidget(num)
+            top.addStretch(1)
+            badge = QLabel(code)
+            badge.setStyleSheet(f"color: {color}; font-weight: 800; font-size: 11px;")
+            top.addWidget(badge)
+            cl.addLayout(top)
+            cl.addWidget(muted(desc, faint=True))
+            self._cells[key] = num
+            grid.addWidget(cell, r, c)
+
+    def set_counts(self, tp: int, fp: int, tn: int, fn: int) -> None:
+        self._cells["tp"].setText(str(tp))
+        self._cells["fp"].setText(str(fp))
+        self._cells["tn"].setText(str(tn))
+        self._cells["fn"].setText(str(fn))
+
+
+class MetricTile(Card):
+    """A big-number metric tile (accuracy / precision / …)."""
+
+    def __init__(self, label: str, hint: str, color: str, parent=None) -> None:
+        super().__init__(parent=parent)
+        self.body.setSpacing(2)
+        self._value = QLabel("—")
+        self._value.setStyleSheet(f"font-size: 30px; font-weight: 800; color: {color};")
+        self.body.addWidget(self._value)
+        name = QLabel(label)
+        name.setStyleSheet(f"font-weight: 700; color: {PALETTE['text']};")
+        self.body.addWidget(name)
+        self.body.addWidget(muted(hint, faint=True))
+
+    def set_value(self, value: str) -> None:
+        self._value.setText(value)
+
+
 class StatCard(Card):
     def __init__(self, value: str, label: str, icon_name: str, color: str, parent=None) -> None:
         super().__init__(parent=parent)
@@ -91,7 +229,7 @@ class StatCard(Card):
         chip.setPixmap(icon(icon_name, color, 20).pixmap(20, 20))
         chip.setFixedSize(38, 38)
         chip.setAlignment(Qt.AlignCenter)
-        chip.setStyleSheet(f"background: {rgba(color, 0.13)}; border-radius: 10px;")
+        chip.setStyleSheet(f"background: {rgba(color, 0.16)}; border-radius: 10px;")
         top.addWidget(chip)
         top.addStretch(1)
         self.body.addLayout(top)
@@ -105,7 +243,7 @@ class StatCard(Card):
 
 
 class HeroCard(Card):
-    """The branded 'Build it. Attack it. Defend it.' banner."""
+    """A slim, playful greeting banner."""
 
     def __init__(self, parent=None) -> None:
         super().__init__(parent=parent)
@@ -119,25 +257,20 @@ class HeroCard(Card):
             "}"
         )
         add_shadow(self)
-
-        from .sidebar import LogoMark
-
+        greet, emoji = _greeting()
         row = QHBoxLayout()
-        row.setSpacing(18)
-        mark = LogoMark(64)
-        row.addWidget(mark, alignment=Qt.AlignTop)
-
+        row.setSpacing(16)
+        mark = QLabel(emoji)
+        mark.setStyleSheet("font-size: 40px;")
+        row.addWidget(mark, alignment=Qt.AlignVCenter)
         col = QVBoxLayout()
-        col.setSpacing(7)
-        tag = QLabel("Build it.  Attack it.  Defend it.")
-        tag.setStyleSheet(f"font-size: 24px; font-weight: 800; color: {PALETTE['text']}; letter-spacing: -0.2px;")
+        col.setSpacing(5)
+        tag = QLabel(f"{greet} — welcome to your purple-team lab")
+        tag.setStyleSheet(f"font-size: 22px; font-weight: 800; color: {PALETTE['text']}; letter-spacing: -0.2px;")
         col.addWidget(tag)
-        col.addWidget(
-            muted(
-                "A purple-team lab for the Model Context Protocol — connect models to MCP "
-                "servers, then break and harden them.",
-            )
-        )
+        col.addWidget(muted(
+            "Build it · Attack it · Defend it — connect models to MCP servers, break them, then harden them.",
+        ))
         pillars = QHBoxLayout()
         pillars.setSpacing(10)
         for text, color in (
@@ -156,23 +289,27 @@ QUICK_ACTIONS = [
     ("attacks", "Run an attack", "skull", "red"),
     ("defense", "Verify a defense", "lock", "blue"),
     ("scanner", "Scan a server", "search", "cyan"),
-    ("models", "Manage models", "cpu", "green"),
-    ("research", "Run benchmark", "chart", "purple"),
+    ("chat", "Open chat", "chat", "violet"),
+    ("research", "Full benchmark", "chart", "purple"),
 ]
 
 
 class DashboardPage(QWidget):
     navigate = Signal(str)  # page key — wired to the main window's switcher
 
-    def __init__(self, parent=None) -> None:
+    def __init__(self, loop: AsyncLoop, parent=None) -> None:
         super().__init__(parent)
+        self._loop = loop
+        self._metrics_job = None
+
         inner = QWidget()
         root = QVBoxLayout(inner)
         root.setContentsMargins(32, 28, 32, 28)
         root.setSpacing(18)
 
+        # greeting header
         header_row = QHBoxLayout()
-        header_row.addWidget(page_header("Dashboard", "Your PurpleMCP lab at a glance"), 1)
+        header_row.addWidget(page_header("Dashboard", "Your PurpleMCP-Lab — at a glance"), 1)
         self._refresh_btn = button("Refresh", "ghost", "refresh")
         self._refresh_btn.clicked.connect(self.refresh)
         header_row.addWidget(self._refresh_btn, alignment=Qt.AlignTop)
@@ -180,22 +317,30 @@ class DashboardPage(QWidget):
 
         root.addWidget(HeroCard())
 
-        # stat cards
-        self._stats = QGridLayout()
-        self._stats.setSpacing(14)
+        # stat tiles
+        stats = QHBoxLayout()
+        stats.setSpacing(14)
         self._providers_stat = StatCard("0 / 0", "Providers ready", "cpu", PALETTE["green"])
         self._servers_stat = StatCard("0", "MCP servers", "server", PALETTE["violet"])
         self._labs_stat = StatCard("0", "Attack labs", "skull", PALETTE["red"])
         self._twins_stat = StatCard(str(_count_hardened_twins()), "Hardened twins", "lock", PALETTE["blue"])
         self._guardrails_stat = StatCard(str(_count_guardrails()), "Guardrails", "tools", PALETTE["purple"])
-        for col, card in enumerate(
-            (self._providers_stat, self._servers_stat, self._labs_stat,
-             self._twins_stat, self._guardrails_stat)
-        ):
-            self._stats.addWidget(card, 0, col)
-        root.addLayout(self._stats)
+        for card in (self._providers_stat, self._servers_stat, self._labs_stat,
+                     self._twins_stat, self._guardrails_stat):
+            stats.addWidget(card)
+        root.addLayout(stats)
 
-        # quick actions — clickable tiles that deep-link into the app
+        # security-metrics panel (the headline feature)
+        root.addWidget(self._build_metrics_card())
+
+        # two-column: OWASP coverage chart | attack mix table
+        mid = QHBoxLayout()
+        mid.setSpacing(16)
+        mid.addWidget(self._build_coverage_card(), 3)
+        mid.addWidget(self._build_mix_card(), 2)
+        root.addLayout(mid)
+
+        # quick actions
         qa = Card("Quick actions", "Jump straight in")
         qrow = QHBoxLayout()
         qrow.setSpacing(12)
@@ -204,23 +349,17 @@ class DashboardPage(QWidget):
         qa.body.addLayout(qrow)
         root.addWidget(qa)
 
-        # OWASP-LLM coverage — a formatted table of how the lab maps to the standard
-        root.addWidget(self._build_coverage_card())
-
-        # detail cards row
+        # provider / server detail tables
         detail = QHBoxLayout()
         detail.setSpacing(16)
-        self._providers_card = Card("LLM Providers", "Bring-your-own-key backends")
-        self._providers_box = QVBoxLayout()
-        self._providers_box.setSpacing(0)
-        self._providers_card.body.addLayout(self._providers_box)
-        detail.addWidget(self._providers_card, 1)
-
-        self._servers_card = Card("MCP Servers", "Clean example servers, sandboxed")
-        self._servers_box = QVBoxLayout()
-        self._servers_box.setSpacing(0)
-        self._servers_card.body.addLayout(self._servers_box)
-        detail.addWidget(self._servers_card, 1)
+        prov_card = Card("LLM Providers", "Bring-your-own-key backends")
+        self._providers_table = _make_table(["Provider", "Model", "Status"])
+        prov_card.body.addWidget(self._providers_table)
+        detail.addWidget(prov_card, 1)
+        srv_card = Card("MCP Servers", "Registered & ready to drive")
+        self._servers_table = _make_table(["Server", "Transport", "Description"])
+        srv_card.body.addWidget(self._servers_table)
+        detail.addWidget(srv_card, 1)
         root.addLayout(detail)
         root.addStretch(1)
 
@@ -228,6 +367,154 @@ class DashboardPage(QWidget):
         outer.setContentsMargins(0, 0, 0, 0)
         outer.addWidget(make_scroll(inner))
         self.refresh()
+
+    # -- security metrics ------------------------------------------------- #
+    def _build_metrics_card(self) -> Card:
+        card = Card(
+            "Security metrics — guardrails as detectors",
+            "Accuracy · Precision · Recall · ASR, computed by running every guardrail for real",
+        )
+        run = button("Compute metrics", "primary", "chart")
+        run.clicked.connect(self._run_metrics)
+        self._metrics_btn = run
+        card.add_header_widget(run)
+
+        self._metrics_busy = BusyBar()
+        card.body.addWidget(self._metrics_busy)
+        self._metrics_status = muted(
+            "Click “Compute metrics” to fire every attack + benign payload at the hardened twins "
+            "(real MCP calls) and score the guardrails.", faint=True,
+        )
+        card.body.addWidget(self._metrics_status)
+
+        tiles = QHBoxLayout()
+        tiles.setSpacing(14)
+        self._tile_acc = MetricTile("Accuracy", "correct / total", PALETTE["green"])
+        self._tile_prec = MetricTile("Precision", "TP / (TP+FP)", PALETTE["blue"])
+        self._tile_rec = MetricTile("Recall", "TP / (TP+FN)", PALETTE["violet"])
+        self._tile_f1 = MetricTile("F1", "harmonic mean", PALETTE["purple"])
+        self._tile_asr = MetricTile("ASR ↓", "attacks surviving", PALETTE["red"])
+        for t in (self._tile_acc, self._tile_prec, self._tile_rec, self._tile_f1, self._tile_asr):
+            tiles.addWidget(t)
+        card.body.addLayout(tiles)
+
+        grids = QHBoxLayout()
+        grids.setSpacing(18)
+        # confusion matrix
+        cm_box = QVBoxLayout()
+        cm_box.setSpacing(8)
+        cm_box.addWidget(muted("Confusion matrix", faint=True))
+        self._confusion = ConfusionMatrix()
+        cm_box.addWidget(self._confusion)
+        grids.addLayout(cm_box, 1)
+        # ASR bar chart
+        asr_box = QVBoxLayout()
+        asr_box.setSpacing(8)
+        asr_box.addWidget(muted("Attack Success Rate — before vs. after the guardrail", faint=True))
+        self._asr_chart = HBarChart(label_w=150, track_w=240)
+        self._asr_chart.set_rows(
+            [("Vulnerable server", 0, PALETTE["red"]), ("Hardened twin", 0, PALETTE["green"])],
+            max_value=100, suffix="%",
+        )
+        asr_box.addWidget(self._asr_chart)
+        asr_box.addStretch(1)
+        grids.addLayout(asr_box, 1)
+        card.body.addLayout(grids)
+        return card
+
+    def _run_metrics(self) -> None:
+        from ...benchmark import run_detection_metrics
+
+        self._metrics_btn.setEnabled(False)
+        self._metrics_busy.start()
+        flash(self._metrics_status, "running real attack + benign payloads…", PALETTE["text_dim"], ms=120000)
+        self._metrics_job = run_job(
+            self._loop,
+            lambda job: run_detection_metrics(
+                on_case=lambda i, n, t: job.event.emit("case", (i, n, t))
+            ),
+            parent=self,
+        )
+        self._metrics_job.event.connect(self._on_metrics_progress)
+        self._metrics_job.succeeded.connect(self._on_metrics)
+        self._metrics_job.failed.connect(self._on_metrics_error)
+
+    def _on_metrics_progress(self, kind: str, payload: object) -> None:
+        if kind == "case":
+            i, n, title = payload  # type: ignore[misc]
+            flash(self._metrics_status, f"[{i}/{n}] {title}", PALETTE["text_dim"], ms=120000)
+
+    def _on_metrics(self, m) -> None:
+        self._metrics_busy.stop()
+        self._metrics_btn.setEnabled(True)
+        self._tile_acc.set_value(f"{m.accuracy:g}%")
+        self._tile_prec.set_value(f"{m.precision:g}%")
+        self._tile_rec.set_value(f"{m.recall:g}%")
+        self._tile_f1.set_value(f"{m.f1:g}%")
+        self._tile_asr.set_value(f"{m.asr_hardened:g}%")
+        self._confusion.set_counts(m.tp, m.fp, m.tn, m.fn)
+        self._asr_chart.set_rows(
+            [("Vulnerable server", m.asr_vulnerable, PALETTE["red"]),
+             ("Hardened twin", m.asr_hardened, PALETTE["green"])],
+            max_value=100, suffix="%",
+        )
+        flash(
+            self._metrics_status,
+            f"✓ {m.n_attacks} attacks · ASR {m.asr_vulnerable:g}% → {m.asr_hardened:g}% after guardrails",
+            PALETTE["green"], ms=8000,
+        )
+
+    def _on_metrics_error(self, msg: str) -> None:
+        self._metrics_busy.stop()
+        self._metrics_btn.setEnabled(True)
+        flash(self._metrics_status, msg, PALETTE["red"], ms=6000)
+
+    # -- coverage chart + table ------------------------------------------- #
+    def _build_coverage_card(self) -> Card:
+        cov = owasp_coverage()
+        covered = sum(1 for v in cov.values() if v)
+        card = Card(
+            "OWASP LLM Top 10 (2025) coverage",
+            f"{len(TAXONOMY)} modules · {covered}/{len(OWASP_LLM_TOP10)} categories demonstrated",
+        )
+        chart = HBarChart(label_w=210, track_w=180)
+        rows = []
+        for code, name in OWASP_LLM_TOP10.items():
+            n = len(cov.get(code, []))
+            color = PALETTE["purple"] if n else PALETTE["border_hi"]
+            rows.append((f"{code} · {name}", n, color))
+        chart.set_rows(rows, max_value=max([len(v) for v in cov.values()] + [1]))
+        card.body.addWidget(chart)
+        return card
+
+    # -- attack mix table ------------------------------------------------- #
+    def _build_mix_card(self) -> Card:
+        card = Card("Attack mix", "By family and severity")
+        table = _make_table(["Family", "Modules", "HIGH", "MEDIUM"])
+        fams: dict[str, list[str]] = {}
+        for e in TAXONOMY:
+            fams.setdefault(e.family, []).append(e.severity)
+        table.setRowCount(len(fams) + 1)
+        r = 0
+        tot_high = tot_med = tot = 0
+        for fam, sevs in fams.items():
+            high = sum(1 for s in sevs if s == "HIGH")
+            med = sum(1 for s in sevs if s == "MEDIUM")
+            tot_high += high
+            tot_med += med
+            tot += len(sevs)
+            table.setItem(r, 0, _tcell(fam))
+            table.setItem(r, 1, _tcell(str(len(sevs)), mono=True, bold=True))
+            table.setItem(r, 2, _tcell(str(high), mono=True, color=PALETTE["red"]))
+            table.setItem(r, 3, _tcell(str(med), mono=True, color=PALETTE["amber"]))
+            r += 1
+        table.setItem(r, 0, _tcell("Total", bold=True))
+        table.setItem(r, 1, _tcell(str(tot), mono=True, bold=True, color=PALETTE["purple"]))
+        table.setItem(r, 2, _tcell(str(tot_high), mono=True, color=PALETTE["red"]))
+        table.setItem(r, 3, _tcell(str(tot_med), mono=True, color=PALETTE["amber"]))
+        table.setMinimumHeight(150)
+        card.body.addWidget(table)
+        return card
 
     def _make_tile(self, key: str, title: str, icon_name: str, color: str) -> QPushButton:
         tile = QPushButton(f"  {title}")
@@ -242,38 +529,6 @@ class DashboardPage(QWidget):
         tile.clicked.connect(lambda _=False, k=key: self.navigate.emit(k))
         return tile
 
-    def _build_coverage_card(self) -> Card:
-        card = Card("OWASP LLM Top 10 (2025) coverage", "How the lab's modules map to the standard")
-        cov = owasp_coverage()
-        covered = sum(1 for v in cov.values() if v)
-        card.body.addWidget(muted(
-            f"{len(TAXONOMY)} modules · {covered}/{len(OWASP_LLM_TOP10)} categories demonstrated",
-            faint=True,
-        ))
-        table = QTableWidget(len(OWASP_LLM_TOP10), 4)
-        table.setHorizontalHeaderLabels(["Code", "Category", "Modules", "Status"])
-        table.verticalHeader().setVisible(False)
-        table.setEditTriggers(QAbstractItemView.NoEditTriggers)
-        table.setSelectionMode(QAbstractItemView.NoSelection)
-        table.setShowGrid(False)
-        table.setFocusPolicy(Qt.NoFocus)
-        table.setStyleSheet(_TABLE_QSS)
-        table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
-        table.horizontalHeader().setStretchLastSection(True)
-        for r, (code, name) in enumerate(OWASP_LLM_TOP10.items()):
-            n = len(cov.get(code, []))
-            ok = n > 0
-            table.setItem(r, 0, _tcell(code, mono=True, color=PALETTE["purple"]))
-            table.setItem(r, 1, _tcell(name))
-            table.setItem(r, 2, _tcell(str(n), mono=True, color=PALETTE["text_dim"]))
-            table.setItem(r, 3, _tcell(
-                "✓ covered" if ok else "—",
-                color=PALETTE["green"] if ok else PALETTE["text_faint"],
-            ))
-        table.setMinimumHeight(330)
-        card.body.addWidget(table)
-        return card
-
     # -- data ------------------------------------------------------------- #
     def refresh(self) -> None:
         providers = load_providers()
@@ -283,52 +538,17 @@ class DashboardPage(QWidget):
         self._servers_stat.set_value(str(len(registry)))
         self._labs_stat.set_value(str(_count_attack_labs()))
 
-        _clear(self._providers_box)
-        for i, (name, cfg) in enumerate(providers.items()):
-            if i:
-                self._providers_box.addWidget(hline())
-            self._providers_box.addWidget(_provider_row(name, cfg))
+        self._providers_table.setRowCount(len(providers))
+        for r, (name, cfg) in enumerate(providers.items()):
+            self._providers_table.setItem(r, 0, _tcell(name, bold=True))
+            self._providers_table.setItem(r, 1, _tcell(cfg.model, mono=True, color=PALETTE["text_dim"]))
+            ok = cfg.ready
+            self._providers_table.setItem(
+                r, 2, _tcell("● ready" if ok else "○ no key",
+                             color=PALETTE["green"] if ok else PALETTE["text_faint"]))
 
-        _clear(self._servers_box)
-        for i, (name, spec) in enumerate(registry.items()):
-            if i:
-                self._servers_box.addWidget(hline())
-            self._servers_box.addWidget(_server_row(name, spec))
-
-
-def _clear(layout) -> None:
-    clear_layout(layout)
-
-
-def _provider_row(name: str, cfg) -> QWidget:
-    row = QWidget()
-    lay = QHBoxLayout(row)
-    lay.setContentsMargins(0, 9, 0, 9)
-    lay.setSpacing(10)
-    nm = QLabel(name)
-    nm.setStyleSheet("font-weight: 700;")
-    nm.setFixedWidth(92)
-    lay.addWidget(nm)
-    lay.addWidget(mono(cfg.model, PALETTE["text_dim"]))
-    lay.addStretch(1)
-    if cfg.ready:
-        lay.addWidget(Badge("ready", PALETTE["green"]))
-    else:
-        lay.addWidget(Badge("no key", PALETTE["text_faint"]))
-    return row
-
-
-def _server_row(name: str, spec) -> QWidget:
-    row = QWidget()
-    lay = QVBoxLayout(row)
-    lay.setContentsMargins(0, 9, 0, 9)
-    lay.setSpacing(2)
-    top = QHBoxLayout()
-    nm = QLabel(name)
-    nm.setStyleSheet("font-weight: 700;")
-    top.addWidget(nm)
-    top.addStretch(1)
-    top.addWidget(Badge(spec.transport, PALETTE["indigo"]))
-    lay.addLayout(top)
-    lay.addWidget(muted(spec.description, faint=True))
-    return row
+        self._servers_table.setRowCount(len(registry))
+        for r, (name, spec) in enumerate(registry.items()):
+            self._servers_table.setItem(r, 0, _tcell(name, bold=True))
+            self._servers_table.setItem(r, 1, _tcell(spec.transport, color=PALETTE["indigo"]))
+            self._servers_table.setItem(r, 2, _tcell(spec.description, color=PALETTE["text_dim"]))

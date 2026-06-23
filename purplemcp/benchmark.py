@@ -29,7 +29,7 @@ from pathlib import Path
 from typing import Callable, Optional
 
 from .config import REPO_ROOT, ServerSpec
-from .gui.catalog import CASES, LAB_ENV_VAR, LAB_TOKEN, judge
+from .gui.catalog import CASES, LAB_ENV_VAR, LAB_TOKEN, _signals, judge
 from .host import MCPHost
 from .taxonomy import BY_ID as TAX
 
@@ -223,6 +223,129 @@ async def run_guardrail_benchmark(
             )
         )
     return report
+
+
+# --------------------------------------------------------------------------- #
+#  detection metrics — the guardrail as a binary classifier
+# --------------------------------------------------------------------------- #
+@dataclass
+class MetricRow:
+    num: str
+    title: str
+    exploited_vulnerable: bool          # attack lands on the unguarded server
+    attack_blocked: bool                # hardened twin blocks the attack (TP) else leak (FN)
+    benign_allowed: Optional[bool]      # hardened twin allows the benign call (TN) else over-block (FP); None if no benign case
+
+
+@dataclass
+class DetectionMetrics:
+    """Accuracy / precision / recall / ASR for the guardrails, treated as detectors.
+
+    TP = attack correctly blocked · FN = attack leaked through the twin
+    TN = benign correctly allowed · FP = benign wrongly blocked (over-blocking)
+    """
+
+    rows: list[MetricRow] = field(default_factory=list)
+
+    @property
+    def tp(self) -> int:
+        return sum(1 for r in self.rows if r.attack_blocked)
+
+    @property
+    def fn(self) -> int:
+        return sum(1 for r in self.rows if not r.attack_blocked)
+
+    @property
+    def tn(self) -> int:
+        return sum(1 for r in self.rows if r.benign_allowed is True)
+
+    @property
+    def fp(self) -> int:
+        return sum(1 for r in self.rows if r.benign_allowed is False)
+
+    @property
+    def n_attacks(self) -> int:
+        return len(self.rows)
+
+    @property
+    def exploited_vulnerable(self) -> int:
+        return sum(1 for r in self.rows if r.exploited_vulnerable)
+
+    @staticmethod
+    def _pct(num: int, den: int) -> float:
+        return round(100.0 * num / den, 1) if den else 0.0
+
+    @property
+    def accuracy(self) -> float:
+        return self._pct(self.tp + self.tn, self.tp + self.tn + self.fp + self.fn)
+
+    @property
+    def precision(self) -> float:
+        return self._pct(self.tp, self.tp + self.fp)
+
+    @property
+    def recall(self) -> float:
+        return self._pct(self.tp, self.tp + self.fn)
+
+    @property
+    def f1(self) -> float:
+        p, r = self.precision, self.recall
+        return round(2 * p * r / (p + r), 1) if (p + r) else 0.0
+
+    @property
+    def asr_vulnerable(self) -> float:
+        """Attack Success Rate against the unguarded server (the baseline threat)."""
+        return self._pct(self.exploited_vulnerable, self.n_attacks)
+
+    @property
+    def asr_hardened(self) -> float:
+        """Attack Success Rate that survives the guardrail (lower is better)."""
+        return self._pct(self.fn, self.tp + self.fn)
+
+    def to_dict(self) -> dict:
+        return {
+            "confusion": {"tp": self.tp, "fp": self.fp, "tn": self.tn, "fn": self.fn},
+            "accuracy_pct": self.accuracy,
+            "precision_pct": self.precision,
+            "recall_pct": self.recall,
+            "f1_pct": self.f1,
+            "asr_vulnerable_pct": self.asr_vulnerable,
+            "asr_hardened_pct": self.asr_hardened,
+        }
+
+
+async def run_detection_metrics(
+    on_case: Optional[Callable[[int, int, str], None]] = None,
+    cases: Optional[list] = None,
+) -> DetectionMetrics:
+    """Measure the guardrails as binary detectors on real subprocess runs.
+
+    For each arena case: fire the attack at the vulnerable server (baseline ASR), the
+    attack at the hardened twin (blocked = TP, leaked = FN) and — when the case has a
+    benign call — the benign input at the hardened twin (allowed = TN, refused = FP).
+    Every call is a live MCP round-trip; nothing is simulated.
+    """
+    cases = cases if cases is not None else CASES
+    metrics = DetectionMetrics()
+    for i, case in enumerate(cases, start=1):
+        if on_case:
+            on_case(i, len(cases), case.title)
+        v = judge(await _call(case.vuln_path, "vulnerable", case.tool, case.attack_args), case, hardened=False)
+        ha = judge(await _call(case.hardened_path, "hardened", case.tool, case.attack_args), case, hardened=True)
+        benign_allowed: Optional[bool] = None
+        # Skip the benign check for network-dependent cases: their benign call hits a
+        # live endpoint, so a transient network error would look like over-blocking.
+        if case.benign_args is not None and not getattr(case, "needs_network", False):
+            out = await _call(case.hardened_path, "hardened", case.tool, case.benign_args)
+            _leaked, defended = _signals(out, "")  # benign refused == over-blocking (FP)
+            benign_allowed = not defended
+        metrics.rows.append(MetricRow(
+            num=case.num, title=case.title,
+            exploited_vulnerable=(v.kind == "bad"),
+            attack_blocked=(ha.kind == "good"),
+            benign_allowed=benign_allowed,
+        ))
+    return metrics
 
 
 # --------------------------------------------------------------------------- #
