@@ -39,6 +39,8 @@ sandbox/
 # ---- Benchmark output (keep the committed reference run + README) ----
 results/bench-*.json
 results/bench-*.md
+results/metrics-*.json
+results/metrics-*.md
 purplemcp.sarif
 
 # ---- OS / editor noise ----

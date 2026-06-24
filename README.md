@@ -393,6 +393,8 @@ PurpleMCP is built to be a reproducible research artifact, not just a demo:
 ```bash
 purplemcp bench                              # deterministic guardrail benchmark
 purplemcp bench --provider ollama -m qwen2.5 # + model-susceptibility probe
+purplemcp metrics                            # accuracy / precision / recall / ASR + confusion matrix
+purplemcp metrics --json                     # machine-readable; --save writes results/metrics-*.{json,md}
 purplemcp scan attacks --format sarif -o purplemcp.sarif
 ```
 

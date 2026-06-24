@@ -377,6 +377,7 @@ class DashboardPage(QWidget):
         super().__init__(parent)
         self._loop = loop
         self._metrics_job = None
+        self._last_metrics = None
 
         inner = QWidget()
         root = QVBoxLayout(inner)
@@ -539,6 +540,21 @@ class DashboardPage(QWidget):
         asr_box.addStretch(1)
         grids.addLayout(asr_box, 1)
         card.body.addLayout(grids)
+
+        # per-case breakdown (filled after a run) + export
+        exp_row = QHBoxLayout()
+        exp_row.addWidget(muted("Per-attack breakdown", faint=True))
+        exp_row.addStretch(1)
+        self._metrics_export = button("Export report", "ghost", "folder")
+        self._metrics_export.setEnabled(False)
+        self._metrics_export.setToolTip("Compute metrics first, then export JSON + Markdown to results/")
+        self._metrics_export.clicked.connect(self._export_metrics)
+        exp_row.addWidget(self._metrics_export)
+        card.body.addLayout(exp_row)
+
+        self._metrics_table = _make_table(["#", "Attack", "Exploited (vuln)", "Blocked (twin)", "Benign"])
+        self._metrics_table.hide()
+        card.body.addWidget(self._metrics_table)
         return card
 
     def _run_metrics(self) -> None:
@@ -577,11 +593,39 @@ class DashboardPage(QWidget):
              ("Hardened twin", m.asr_hardened, PALETTE["green"])],
             max_value=100, suffix="%",
         )
+        self._metrics_table.setRowCount(len(m.rows))
+        for r, row in enumerate(m.rows):
+            self._metrics_table.setItem(r, 0, _tcell(row.num, mono=True))
+            self._metrics_table.setItem(r, 1, _tcell(row.title, bold=True))
+            self._metrics_table.setItem(
+                r, 2, _tcell("yes" if row.exploited_vulnerable else "no",
+                             color=PALETTE["red"] if row.exploited_vulnerable else PALETTE["text_dim"]))
+            self._metrics_table.setItem(
+                r, 3, _tcell("blocked" if row.attack_blocked else "LEAK",
+                             color=PALETTE["green"] if row.attack_blocked else PALETTE["red"]))
+            ba = "—" if row.benign_allowed is None else ("allowed" if row.benign_allowed else "over-block")
+            self._metrics_table.setItem(r, 4, _tcell(ba, color=PALETTE["text_dim"]))
+        self._metrics_table.setMinimumHeight(260)
+        self._metrics_table.show()
+        self._last_metrics = m
+        self._metrics_export.setEnabled(True)
         flash(
             self._metrics_status,
             f"✓ {m.n_attacks} attacks · ASR {m.asr_vulnerable:g}% → {m.asr_hardened:g}% after guardrails",
             PALETTE["green"], ms=8000,
         )
+
+    def _export_metrics(self) -> None:
+        if self._last_metrics is None:
+            return
+        from ...benchmark import write_metrics_report
+
+        try:
+            json_path, md_path = write_metrics_report(self._last_metrics, REPO_ROOT / "results")
+        except Exception as exc:  # noqa: BLE001
+            flash(self._metrics_status, f"export failed: {exc}", PALETTE["red"], ms=5000)
+            return
+        flash(self._metrics_status, f"✓ wrote results/{json_path.name} + {md_path.name}", PALETTE["green"], ms=6000)
 
     def _on_metrics_error(self, msg: str) -> None:
         self._metrics_busy.stop()

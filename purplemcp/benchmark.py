@@ -313,6 +313,32 @@ class DetectionMetrics:
             "asr_hardened_pct": self.asr_hardened,
         }
 
+    def to_markdown(self) -> str:
+        lines = [
+            "# PurpleMCP-Lab — guardrail detection metrics",
+            "",
+            f"- generated: `{_dt.datetime.now(_dt.timezone.utc).isoformat(timespec='seconds')}`",
+            f"- attacks measured: **{self.n_attacks}**  ·  benign cases: **{self.tp and (self.tn + self.fp)}**",
+            f"- **accuracy {self.accuracy}% · precision {self.precision}% · recall {self.recall}% · F1 {self.f1}%**",
+            f"- **ASR: vulnerable {self.asr_vulnerable}% → hardened {self.asr_hardened}%** (lower is better)",
+            "",
+            "| confusion | predicted: block | predicted: allow |",
+            "| --- | --- | --- |",
+            f"| **attack** | TP {self.tp} | FN {self.fn} |",
+            f"| **benign** | FP {self.fp} | TN {self.tn} |",
+            "",
+            "| # | attack | exploited (vuln) | blocked (hardened) | benign allowed |",
+            "| --- | --- | --- | --- | --- |",
+        ]
+        for r in self.rows:
+            ba = "—" if r.benign_allowed is None else ("yes" if r.benign_allowed else "NO (over-block)")
+            lines.append(
+                f"| {r.num} | {r.title} | {'yes' if r.exploited_vulnerable else 'no'} | "
+                f"{'yes' if r.attack_blocked else 'NO (leak)'} | {ba} |"
+            )
+        lines.append("")
+        return "\n".join(lines)
+
 
 async def run_detection_metrics(
     on_case: Optional[Callable[[int, int, str], None]] = None,
@@ -420,4 +446,16 @@ def write_reports(report: BenchmarkReport, out_dir: Path, stem: Optional[str] = 
     md_path = out_dir / f"{stem}.md"
     json_path.write_text(report.to_json(), encoding="utf-8")
     md_path.write_text(report.to_markdown(), encoding="utf-8")
+    return json_path, md_path
+
+
+def write_metrics_report(metrics: DetectionMetrics, out_dir: Path, stem: Optional[str] = None) -> tuple[Path, Path]:
+    """Persist a DetectionMetrics run as JSON + Markdown; returns (json_path, md_path)."""
+    out_dir.mkdir(parents=True, exist_ok=True)
+    stem = stem or f"metrics-{_dt.datetime.now(_dt.timezone.utc).strftime('%Y%m%dT%H%M%S')}"
+    json_path = out_dir / f"{stem}.json"
+    md_path = out_dir / f"{stem}.md"
+    payload = {**metrics.to_dict(), "n_attacks": metrics.n_attacks, "cases": [asdict(r) for r in metrics.rows]}
+    json_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    md_path.write_text(metrics.to_markdown(), encoding="utf-8")
     return json_path, md_path

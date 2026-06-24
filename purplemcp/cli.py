@@ -412,6 +412,56 @@ def bench(
 
 
 @app.command()
+def metrics(
+    out: str = typer.Option("results", "--out", help="Directory for the JSON + Markdown report."),
+    save: bool = typer.Option(False, "--save/--no-save", help="Write a JSON + Markdown report."),
+    json_out: bool = typer.Option(False, "--json", help="Print machine-readable JSON instead of a table."),
+) -> None:
+    """Score the guardrails as detectors: accuracy / precision / recall / ASR (real runs)."""
+    import json as _json
+    from pathlib import Path
+
+    from .benchmark import run_detection_metrics, write_metrics_report
+
+    ensure_sandbox()
+    m = _run_async(run_detection_metrics(
+        on_case=None if json_out else (lambda i, n, t: err.print(f"[dim]  [{i}/{n}] {t}[/dim]"))
+    ))
+
+    if json_out:
+        print(_json.dumps(m.to_dict(), indent=2))
+        raise typer.Exit(0)
+
+    summary = Table(title="Guardrail detection metrics (real runs)")
+    summary.add_column("metric", style="bold")
+    summary.add_column("value")
+    for label, value in (
+        ("accuracy", f"{m.accuracy}%"), ("precision", f"{m.precision}%"),
+        ("recall", f"{m.recall}%"), ("F1", f"{m.f1}%"),
+        ("ASR — vulnerable", f"[red]{m.asr_vulnerable}%[/red]"),
+        ("ASR — hardened", f"[green]{m.asr_hardened}%[/green]"),
+    ):
+        summary.add_row(label, value)
+    console.print(summary)
+
+    cm = Table(title="Confusion matrix")
+    cm.add_column("", style="dim")
+    cm.add_column("predicted block")
+    cm.add_column("predicted allow")
+    cm.add_row("attack", f"[green]TP {m.tp}[/green]", f"[red]FN {m.fn}[/red]")
+    cm.add_row("benign", f"[yellow]FP {m.fp}[/yellow]", f"[green]TN {m.tn}[/green]")
+    console.print(cm)
+    console.print(
+        f"[bold]ASR:[/bold] [red]{m.asr_vulnerable}%[/red] on the vulnerable server "
+        f"→ [green]{m.asr_hardened}%[/green] after the guardrail."
+    )
+
+    if save:
+        json_path, md_path = write_metrics_report(m, Path(out))
+        console.print(f"\n[green]wrote[/green] {json_path}\n[green]wrote[/green] {md_path}")
+
+
+@app.command()
 def taxonomy() -> None:
     """Show the threat taxonomy: each module mapped to OWASP LLM / CWE / ATLAS."""
     from .taxonomy import TAXONOMY, owasp_coverage

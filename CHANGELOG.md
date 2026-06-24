@@ -7,6 +7,11 @@ All notable changes to PurpleMCP. This project adheres loosely to
 ## [0.6.0] — Sorbet edition
 
 ### Added
+- **`purplemcp metrics` CLI command** — scores the guardrails as binary detectors
+  (accuracy / precision / recall / F1 / **ASR**) with a confusion matrix, plus
+  `--json` and `--save` (writes `results/metrics-*.{json,md}`). Computed from real MCP
+  runs via `run_detection_metrics`; `write_metrics_report` persists it. The dashboard
+  metrics panel gained a **per-attack breakdown table** and an **Export report** button.
 - **Redesigned, playful dashboard (re-sequenced layout)** — a time-aware greeting,
   a **Lab readiness** panel driven by live `environment.gather()` checks (Python,
   providers, Ollama, servers, GUI, lab state), defense-first stat tiles, **donut

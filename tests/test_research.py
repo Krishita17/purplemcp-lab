@@ -95,3 +95,19 @@ class TestDetectionMetrics:
         d = m.to_dict()
         assert d["confusion"] == {"tp": 1, "fp": 0, "tn": 1, "fn": 0}
         assert d["asr_vulnerable_pct"] == 100.0 and d["asr_hardened_pct"] == 0.0
+
+    def test_metrics_markdown_and_report(self, tmp_path):
+        from purplemcp.benchmark import DetectionMetrics, MetricRow, write_metrics_report
+
+        m = DetectionMetrics(rows=[
+            MetricRow("18", "Eval", True, True, True),
+            MetricRow("25", "XXE", True, True, None),
+        ])
+        md = m.to_markdown()
+        assert "detection metrics" in md and "TP 2" in md and "Eval" in md
+        json_path, md_path = write_metrics_report(m, tmp_path)
+        assert json_path.exists() and md_path.exists()
+        import json as _json
+        doc = _json.loads(json_path.read_text())
+        assert doc["confusion"]["tp"] == 2 and doc["n_attacks"] == 2
+        assert len(doc["cases"]) == 2
