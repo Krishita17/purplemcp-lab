@@ -176,6 +176,11 @@ def default_registry() -> dict[str, ServerSpec]:
             "threat_intel/server.py",
             "URL/domain/hash reputation (VirusTotal) + IP abuse (AbuseIPDB).",
         ),
+        "dns_tools": _py_server(
+            "dns_tools",
+            "dns_tools/server.py",
+            "Real DNS resolution, reverse DNS & IP geo/ASN info — no key needed.",
+        ),
     }
 
 

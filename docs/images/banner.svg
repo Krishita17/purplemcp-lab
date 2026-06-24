@@ -47,14 +47,14 @@
       <text x="52" y="45" font-size="22" font-weight="800" fill="#a37fda">BUILD</text>
       <text x="28" y="90"  font-size="16" fill="#6c6680">One host, any model, any server —</text>
       <text x="28" y="116" font-size="16" fill="#6c6680">Ollama + Claude / GPT / Gemini and</text>
-      <text x="28" y="142" font-size="16" fill="#6c6680">8 MCP servers, several on live APIs.</text>
+      <text x="28" y="142" font-size="16" fill="#6c6680">9 MCP servers, several on live APIs.</text>
     </g>
     <!-- ATTACK -->
     <g transform="translate(381,0)">
       <rect width="357" height="170" rx="16" fill="#ffffff" stroke="#f4b0bc" stroke-opacity="0.9"/>
       <circle cx="32" cy="38" r="8" fill="#e76a82"/>
       <text x="52" y="45" font-size="22" font-weight="800" fill="#e76a82">ATTACK</text>
-      <text x="28" y="90"  font-size="16" fill="#6c6680">25 real, runnable exploits against</text>
+      <text x="28" y="90"  font-size="16" fill="#6c6680">27 real, runnable exploits against</text>
       <text x="28" y="116" font-size="16" fill="#6c6680">intentionally-vulnerable MCP</text>
       <text x="28" y="142" font-size="16" fill="#6c6680">servers — lab-gated.</text>
     </g>
@@ -63,7 +63,7 @@
       <rect width="357" height="170" rx="16" fill="#ffffff" stroke="#a7dcc6" stroke-opacity="0.9"/>
       <circle cx="32" cy="38" r="8" fill="#3fb38d"/>
       <text x="52" y="45" font-size="22" font-weight="800" fill="#3fb38d">DEFEND</text>
-      <text x="28" y="90"  font-size="16" fill="#6c6680">20 reusable guardrails + hardened</text>
+      <text x="28" y="90"  font-size="16" fill="#6c6680">22 reusable guardrails + hardened</text>
       <text x="28" y="116" font-size="16" fill="#6c6680">twins that block every attack, with</text>
       <text x="28" y="142" font-size="16" fill="#6c6680">a live explain-and-verify lab.</text>
     </g>
@@ -71,6 +71,6 @@
 
   <!-- stat strip -->
   <g font-size="17" font-weight="600" fill="#867e96" letter-spacing="0.4">
-    <text x="82" y="572">25 attacks &#160;·&#160; 20 guardrails &#160;·&#160; 8 MCP servers &#160;·&#160; 5 LLM providers &#160;·&#160; CLI + desktop app</text>
+    <text x="82" y="572">27 attacks &#160;·&#160; 22 guardrails &#160;·&#160; 9 MCP servers &#160;·&#160; 5 LLM providers &#160;·&#160; CLI + desktop app</text>
   </g>
 </svg>

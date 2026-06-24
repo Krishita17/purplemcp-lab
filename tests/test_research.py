@@ -14,7 +14,7 @@ from purplemcp.gui.catalog_attacks import ATTACKS
 
 class TestTaxonomy:
     def test_covers_every_module(self):
-        assert len(tax.TAXONOMY) == len(ATTACKS) == 25
+        assert len(tax.TAXONOMY) == len(ATTACKS) == 27
         for meta in ATTACKS:
             assert meta.id in tax.BY_ID
 
@@ -25,7 +25,7 @@ class TestTaxonomy:
 
     def test_rows_are_serializable(self):
         rows = tax.as_rows()
-        assert len(rows) == 25
+        assert len(rows) == 27
         assert all({"num", "title", "owasp_llm", "cwe", "guardrail"} <= r.keys() for r in rows)
 
 

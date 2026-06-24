@@ -8,18 +8,19 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-a855f7?style=flat-square)](LICENSE)
 [![Version](https://img.shields.io/badge/version-0.6.0-c9b6f7?style=flat-square)](CHANGELOG.md)
 ![Python](https://img.shields.io/badge/Python-3.11%2B-c9b6f7?style=flat-square&logo=python&logoColor=white)
-![Attack modules](https://img.shields.io/badge/attack%20modules-25-ffadc6?style=flat-square)
-![Guardrails](https://img.shields.io/badge/guardrails-20-a9d6f5?style=flat-square)
+![Attack modules](https://img.shields.io/badge/attack%20modules-27-ffadc6?style=flat-square)
+![Guardrails](https://img.shields.io/badge/guardrails-22-a9d6f5?style=flat-square)
 ![OWASP LLM Top 10](https://img.shields.io/badge/OWASP%20LLM%20Top%2010-6%2F10%20mapped-9fe0c0?style=flat-square)
 
 **Connect any LLM — local [Ollama](https://ollama.com) or cloud Claude / GPT / Gemini — to MCP servers,
-break them with 25 real, runnable exploits, then harden them with a reusable guardrails library.**
+break them with 27 real, runnable exploits, then harden them with a reusable guardrails library.**
 All from a polished desktop console *or* the CLI — now in a light **Sorbet** (peach · mint · lilac) theme.
 
-> **Sorbet edition.** This build adds a light pastel UI, four new MCP servers wired to **real** APIs
-> (weather/crypto, Tavily web search, VirusTotal + AbuseIPDB threat-intel), two new attacks
-> (insecure JWT verification, XXE), and a formatted OWASP-coverage table on the dashboard. Nothing is
-> mocked — every server makes genuine calls; bring your own keys on the **AI Models** page.
+> **Sorbet edition.** This build adds a light pastel UI, five new MCP servers wired to **real** APIs
+> (weather/crypto, Tavily web search, VirusTotal + AbuseIPDB threat-intel, DNS/IP lookups), four new
+> attacks (insecure JWT, XXE, regex injection, open redirect), a live **security-metrics** dashboard
+> (accuracy / precision / recall / ASR), and the `purplemcp metrics` command. Nothing is mocked —
+> every server makes genuine calls; bring your own keys on the **AI Models** page.
 
 </div>
 
@@ -32,9 +33,9 @@ live side by side — every exploit ships next to the fix that stops it. Three p
 
 | Pillar | What it gives you |
 | --- | --- |
-| 🏗️ **Build & Connect** | A multi-provider host that drives **local models (Ollama)** *and* **cloud models (Claude, GPT, Gemini, OpenRouter)** against MCP servers — including **eight** bundled servers, several wired to **real, live APIs** (weather, crypto, web search, threat-intel). |
-| 🔴 **Attack** *(lab only)* | Intentionally-vulnerable MCP servers + working exploits for **25** threat classes, so you can *watch* the protocol get abused — never simulated, always runnable. |
-| 🔵 **Defend** | A reusable hardening library (**20 guardrails**), a hardened twin of every vulnerable server, a static **security scanner**, and a **Defense Lab that runs the fix for real** — read it on one side, watch it block the payload on the other. |
+| 🏗️ **Build & Connect** | A multi-provider host that drives **local models (Ollama)** *and* **cloud models (Claude, GPT, Gemini, OpenRouter)** against MCP servers — including **nine** bundled servers, several wired to **real, live APIs** (weather, crypto, web search, threat-intel, DNS). |
+| 🔴 **Attack** *(lab only)* | Intentionally-vulnerable MCP servers + working exploits for **27** threat classes, so you can *watch* the protocol get abused — never simulated, always runnable. |
+| 🔵 **Defend** | A reusable hardening library (**22 guardrails**), a hardened twin of every vulnerable server, a static **security scanner**, and a **Defense Lab that runs the fix for real** — read it on one side, watch it block the payload on the other. |
 
 > [!WARNING]
 > The [`attacks/`](attacks/) folder contains **intentionally vulnerable code** for security education.
@@ -43,7 +44,7 @@ live side by side — every exploit ships next to the fix that stops it. Three p
 
 > [!TIP]
 > **New to MCP security? Start here →** **[The MCP Security Handbook](docs/MCP-SECURITY-GUIDE.md)** —
-> a complete, in-depth guide to the protocol, the 25 attack classes, and the 20 guardrails that stop
+> a complete, in-depth guide to the protocol, the 27 attack classes, and the 22 guardrails that stop
 > them. (Also readable in-app via the **Learn** page.)
 
 ---
@@ -183,7 +184,7 @@ the CLI uses — no separate server, no browser. It organizes all of PurpleMCP i
 | Connect | **MCP Servers** | View the registry, **add your own servers**, one-click add from a **catalog of real published servers**, and install into Claude Desktop. |
 | Connect | **Tool Explorer** | Browse a server's tools, inspect each JSON schema, and call any tool through an auto-generated form — no model required. |
 | Connect | **Chat Playground** | Chat with any provider/model and watch the agent's **tool calls + results stream live** as inline cards. |
-| Red team | **Attack Lab** | Browse all 25 attacks, **run the real exploit** with live output, and copy/run the commands from a built-in **manual terminal** (lab-gated). |
+| Red team | **Attack Lab** | Browse all 27 attacks, **run the real exploit** with live output, and copy/run the commands from a built-in **manual terminal** (lab-gated). |
 | Blue team | **Defense Lab** | **Explanation on the left, the defense running on the right**: the guardrail mechanism + source, a **Verify** that replays the payload (exploited → blocked), and a live **manual terminal**. |
 | Blue team | **Security Scanner** | Run the static + dynamic scanner with a severity chart, summary pills, and per-finding cards. |
 | Research | **Research** | Threat taxonomy (OWASP/CWE/ATLAS) + one-click benchmark with the defense matrix and JSON/MD export. |
@@ -270,6 +271,7 @@ care whether it's driving a local Llama or cloud Claude.
 | `live_data` | **Real** weather (Open-Meteo) + crypto prices (CoinGecko) | none (keyless) |
 | `web_search` | **Real** live web search via Tavily | `TAVILY_API_KEY` |
 | `threat_intel` | **Real** URL/domain/hash reputation (VirusTotal) + IP abuse (AbuseIPDB) | `VT_API_KEY`, `ABUSEIPDB_API_KEY` |
+| `dns_tools` | **Real** DNS resolution, reverse DNS & IP geo/ASN info | none (keyless) |
 
 ```bash
 purplemcp providers                      # readiness of each LLM
@@ -312,6 +314,8 @@ Twenty-three self-contained modules, each a **vulnerable server + an exploit + a
 | 23 | **Argument / flag injection** | A caller's value becomes a command-line *option*, not data (no shell needed) |
 | 24 | **Insecure JWT verification** | An `alg:none` / unsigned token is trusted, forging an admin identity |
 | 25 | **XML external entity (XXE)** | A `SYSTEM` entity makes the XML parser read local files / hit internal URLs |
+| 26 | **Regex injection** | A caller-controlled search pattern (`.*`) widens the match to hidden records |
+| 27 | **Open redirect** | A link builder trusts any host, bouncing users off-site to a phishing page |
 
 Full catalog with mechanics: [docs/04-attack-catalog.md](docs/04-attack-catalog.md). Each lives in
 [`attacks/NN_*/`](attacks/) and is gated by the safety switch.
@@ -346,6 +350,8 @@ in [`purplemcp/guardrails/`](purplemcp/guardrails/):
 | Argument / flag injection | `guardrails.argv.safe_argv()` — pass values whole + a `--` end-of-options guard |
 | Insecure JWT verification | `guardrails.jwtsafe.verify_jwt()` — require HS256, reject `alg:none`, verify the signature |
 | XML external entity (XXE) | `guardrails.safexml.safe_parse_xml()` — reject DOCTYPE/ENTITY before parsing |
+| Regex injection | `guardrails.saferegex.literal_search()` — escape the input, match as a literal substring |
+| Open redirect | `guardrails.redirects.safe_redirect()` — http(s) scheme + host allowlist |
 
 Prove it yourself, side by side — exploited on the left, blocked on the right:
 

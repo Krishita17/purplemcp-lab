@@ -355,3 +355,27 @@ class TestXML:
     def test_blocks_bare_entity_declaration(self):
         with pytest.raises(g.XMLSecurityError):
             g.safe_parse_xml('<!ENTITY x "y"><r/>')
+
+
+class TestSafeRegex:
+    def test_literal_match_finds_substring(self):
+        assert g.literal_search("alice", "user alice logged in")
+
+    def test_metacharacters_are_literal(self):
+        # '.*' must match the literal characters, not "anything"
+        assert not g.literal_search(".*", "SECRET admin recovery code 3310")
+        assert g.literal_search(".*", "weird .* literal here")
+
+
+class TestRedirects:
+    def test_allows_allowlisted_host(self):
+        url = "https://app.example.com/dashboard"
+        assert g.safe_redirect(url, {"app.example.com"}) == url
+
+    def test_blocks_offsite_host(self):
+        with pytest.raises(g.OpenRedirectError):
+            g.safe_redirect("https://evil.example.com/phish", {"app.example.com"})
+
+    def test_blocks_non_http_scheme(self):
+        with pytest.raises(g.OpenRedirectError):
+            g.safe_redirect("javascript:alert(1)", {"app.example.com"})

@@ -31,7 +31,9 @@ from .exec import run as safe_run
 from .framing import frame_untrusted, sanitize_output, strip_control
 from .jwtsafe import JWTError, sign_jwt, verify_jwt
 from .net import SSRFError, assert_url_allowed, safe_get
+from .redirects import OpenRedirectError, safe_redirect
 from .safexml import XMLSecurityError, safe_parse_xml
+from .saferegex import literal_search
 from .paths import PathTraversalError, safe_resolve
 from .ratelimit import RateLimiter, RateLimitExceeded
 from .safe_eval import UnsafeExpression, safe_eval
@@ -126,4 +128,9 @@ __all__ = [
     # safexml (XML external entity / XXE)
     "safe_parse_xml",
     "XMLSecurityError",
+    # saferegex (regex injection)
+    "literal_search",
+    # redirects (open redirect)
+    "safe_redirect",
+    "OpenRedirectError",
 ]

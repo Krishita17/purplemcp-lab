@@ -416,6 +416,38 @@ CASES: list[ArenaCase] = [
                 "'localhost'). safe_parse_xml refuses any DOCTYPE/ENTITY declaration up front, so the "
                 "entity never resolves.",
     ),
+    ArenaCase(
+        id="regex-injection",
+        num="26",
+        title="Regex Injection",
+        threat="A log search compiles the caller's pattern as a regex, so metacharacters widen the match.",
+        tool="search_logs",
+        benign_args={"pattern": "alice"},
+        attack_args={"pattern": ".*"},
+        proof="REGEX-SECRET-3310",
+        vuln_path=ATTACKS / "26_regex_injection" / "vulnerable_server.py",
+        hardened_path=HARDENED / "safe_log_search.py",
+        guardrail="guardrails.saferegex.literal_search — escape the input, match as a literal substring",
+        explain="The '.*' pattern matches every log line on the vulnerable server, leaking the admin "
+                "recovery code. literal_search escapes the input so '.*' is matched literally — it "
+                "appears in no line, so the secret stays hidden.",
+    ),
+    ArenaCase(
+        id="open-redirect",
+        num="27",
+        title="Open Redirect",
+        threat="A link builder trusts any destination host, so it will redirect users off-site.",
+        tool="build_redirect",
+        benign_args={"target": "https://app.example.com/dashboard"},
+        attack_args={"target": "https://evil.example.com/phish"},
+        proof="Location: https://evil.example.com",
+        vuln_path=ATTACKS / "27_open_redirect" / "vulnerable_server.py",
+        hardened_path=HARDENED / "safe_redirector.py",
+        guardrail="guardrails.redirects.safe_redirect — http(s) scheme + host allowlist",
+        explain="The vulnerable builder emits a redirect to evil.example.com. safe_redirect parses the "
+                "target and refuses any host that is not on the allowlist, so the off-site phishing "
+                "redirect is rejected while on-site links still work.",
+    ),
 ]
 
 CASES_BY_ID = {c.id: c for c in CASES}

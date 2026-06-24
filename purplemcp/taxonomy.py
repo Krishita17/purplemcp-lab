@@ -101,6 +101,10 @@ _REFS: dict[str, FrameworkRefs] = {
         "LLM06", "CWE-347", "Improper Verification of Cryptographic Signature (JWT alg:none)"),
     "xxe": FrameworkRefs(
         "LLM05", "CWE-611", "Improper Restriction of XML External Entity Reference"),
+    "regex-injection": FrameworkRefs(
+        "LLM05", "CWE-625", "Permissive Regular Expression (caller-controlled regex)"),
+    "open-redirect": FrameworkRefs(
+        "LLM05", "CWE-601", "URL Redirection to Untrusted Site (Open Redirect)"),
 }
 
 

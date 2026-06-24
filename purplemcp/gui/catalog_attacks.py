@@ -121,6 +121,12 @@ ATTACKS: list[AttackMeta] = [
     AttackMeta("25", "xxe", "XML External Entity (XXE)", FAMILY_CLASSIC, "HIGH",
                "An XML parser resolves external entities, reading local files.",
                "25_xxe", "safexml.py", "xxe"),
+    AttackMeta("26", "regex-injection", "Regex Injection", FAMILY_CLASSIC, "MEDIUM",
+               "A search compiles the caller's pattern, so '.*' matches hidden rows.",
+               "26_regex_injection", "saferegex.py", "regex-injection"),
+    AttackMeta("27", "open-redirect", "Open Redirect", FAMILY_CLASSIC, "MEDIUM",
+               "A link builder trusts any host, so it redirects users off-site.",
+               "27_open_redirect", "redirects.py", "open-redirect"),
 ]
 
 ATTACKS_BY_ID = {a.id: a for a in ATTACKS}

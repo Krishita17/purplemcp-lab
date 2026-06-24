@@ -3,10 +3,10 @@ message: "If you use PurpleMCP-Lab in academic or applied research, please cite 
 title: "PurpleMCP-Lab: A Purple-Team Lab and Benchmark for Model Context Protocol Security"
 abstract: >-
   PurpleMCP-Lab is a reproducible lab for building, attacking, and defending Model
-  Context Protocol (MCP) servers. It pairs 25 attack modules and working exploits
-  with hardened twins built on a reusable library of 20 guardrails, ships eight
+  Context Protocol (MCP) servers. It pairs 27 attack modules and working exploits
+  with hardened twins built on a reusable library of 22 guardrails, ships nine
   clean example servers (several wired to live APIs — weather, crypto, web search,
-  and threat-intel), maps every module to OWASP LLM Top 10 / CWE / MITRE ATLAS, and
+  threat-intel, and DNS), maps every module to OWASP LLM Top 10 / CWE / MITRE ATLAS, and
   includes PurpleMCP-Bench — a deterministic guardrail-effectiveness benchmark plus
   an optional LLM-susceptibility evaluation — with machine-readable (JSON/SARIF)
   output and a light "Sorbet" desktop GUI.

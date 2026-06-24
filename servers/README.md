@@ -14,6 +14,7 @@ runs over stdio and is registered in [`purplemcp/config.py`](../purplemcp/config
 | [`live_data`](live_data/server.py) | weather, crypto_price | **Real** keyless APIs (Open-Meteo, CoinGecko) |
 | [`web_search`](web_search/server.py) | search | **Real** Tavily API — needs `TAVILY_API_KEY` |
 | [`threat_intel`](threat_intel/server.py) | url_report, domain_report, file_hash_report, ip_reputation | **Real** VirusTotal + AbuseIPDB — needs `VT_API_KEY` / `ABUSEIPDB_API_KEY` |
+| [`dns_tools`](dns_tools/server.py) | resolve, reverse_dns, ip_info | **Real** DNS (stdlib) + IP geo/ASN via keyless ip-api.com |
 
 ## Try them
 

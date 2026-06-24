@@ -7,6 +7,14 @@ All notable changes to PurpleMCP. This project adheres loosely to
 ## [0.6.0] — Sorbet edition
 
 ### Added
+- **Two more attack/defense modules → 27 total:** **26 Regex Injection** (CWE-625 —
+  a caller-controlled `.*` widens a log search to hidden rows; guarded by
+  `guardrails.saferegex.literal_search`) and **27 Open Redirect** (CWE-601 — a link
+  builder trusts any host; guarded by `guardrails.redirects.safe_redirect`). Both ship
+  the full triple, a hardened twin, an arena case, taxonomy mapping, and tests.
+  Benchmark: **21/21** blocked. Guardrail library is now **22** primitives.
+- **New real keyless MCP server `dns_tools`** — forward DNS (`resolve`), reverse DNS
+  (`reverse_dns`), and IP geo/ASN via keyless ip-api.com (`ip_info`). Nine servers total.
 - **`purplemcp metrics` CLI command** — scores the guardrails as binary detectors
   (accuracy / precision / recall / F1 / **ASR**) with a confusion matrix, plus
   `--json` and `--save` (writes `results/metrics-*.{json,md}`). Computed from real MCP
