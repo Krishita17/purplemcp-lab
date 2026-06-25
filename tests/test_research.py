@@ -14,7 +14,7 @@ from purplemcp.gui.catalog_attacks import ATTACKS
 
 class TestTaxonomy:
     def test_covers_every_module(self):
-        assert len(tax.TAXONOMY) == len(ATTACKS) == 27
+        assert len(tax.TAXONOMY) == len(ATTACKS) == 28
         for meta in ATTACKS:
             assert meta.id in tax.BY_ID
 
@@ -25,7 +25,7 @@ class TestTaxonomy:
 
     def test_rows_are_serializable(self):
         rows = tax.as_rows()
-        assert len(rows) == 27
+        assert len(rows) == 28
         assert all({"num", "title", "owasp_llm", "cwe", "guardrail"} <= r.keys() for r in rows)
 
 
@@ -111,3 +111,15 @@ class TestDetectionMetrics:
         doc = _json.loads(json_path.read_text())
         assert doc["confusion"]["tp"] == 2 and doc["n_attacks"] == 2
         assert len(doc["cases"]) == 2
+
+    def test_by_family_groups_rows(self):
+        from purplemcp.benchmark import DetectionMetrics, MetricRow
+
+        m = DetectionMetrics(rows=[
+            MetricRow("03", "Cmd", True, True, True, family="Classic appsec, now model-reachable"),
+            MetricRow("17", "Log", True, True, True, family="MCP-specific"),
+            MetricRow("18", "Eval", True, False, True, family="Classic appsec, now model-reachable"),
+        ])
+        fams = dict((name, (n, blocked, recall)) for name, n, blocked, recall in m.by_family())
+        assert fams["MCP-specific"] == (1, 1, 100.0)
+        assert fams["Classic appsec, now model-reachable"] == (2, 1, 50.0)

@@ -29,6 +29,7 @@ from .descriptions import (
 from .exec import CommandNotAllowed
 from .exec import run as safe_run
 from .framing import frame_untrusted, sanitize_output, strip_control
+from .headers import HeaderInjectionError, safe_header_value
 from .jwtsafe import JWTError, sign_jwt, verify_jwt
 from .net import SSRFError, assert_url_allowed, safe_get
 from .redirects import OpenRedirectError, safe_redirect
@@ -133,4 +134,7 @@ __all__ = [
     # redirects (open redirect)
     "safe_redirect",
     "OpenRedirectError",
+    # headers (CRLF / HTTP header injection)
+    "safe_header_value",
+    "HeaderInjectionError",
 ]

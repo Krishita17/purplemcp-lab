@@ -541,6 +541,14 @@ class DashboardPage(QWidget):
         grids.addLayout(asr_box, 1)
         card.body.addLayout(grids)
 
+        # recall-by-family chart (filled after a run)
+        fam_box = QVBoxLayout()
+        fam_box.setSpacing(8)
+        fam_box.addWidget(muted("Recall by attack family", faint=True))
+        self._family_chart = HBarChart(label_w=260, track_w=200)
+        fam_box.addWidget(self._family_chart)
+        card.body.addLayout(fam_box)
+
         # per-case breakdown (filled after a run) + export
         exp_row = QHBoxLayout()
         exp_row.addWidget(muted("Per-attack breakdown", faint=True))
@@ -591,6 +599,12 @@ class DashboardPage(QWidget):
         self._asr_chart.set_rows(
             [("Vulnerable server", m.asr_vulnerable, PALETTE["red"]),
              ("Hardened twin", m.asr_hardened, PALETTE["green"])],
+            max_value=100, suffix="%",
+        )
+        self._family_chart.set_rows(
+            [(f"{name} ({blocked}/{n})", recall,
+              PALETTE["green"] if recall == 100 else PALETTE["amber"])
+             for name, n, blocked, recall in m.by_family()],
             max_value=100, suffix="%",
         )
         self._metrics_table.setRowCount(len(m.rows))

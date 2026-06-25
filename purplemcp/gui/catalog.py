@@ -448,6 +448,22 @@ CASES: list[ArenaCase] = [
                 "target and refuses any host that is not on the allowlist, so the off-site phishing "
                 "redirect is rejected while on-site links still work.",
     ),
+    ArenaCase(
+        id="header-injection",
+        num="28",
+        title="CRLF / Header Injection",
+        threat="A tool builds a response header from input, so a CR/LF injects a second header.",
+        tool="set_cookie",
+        benign_args={"name": "session", "value": "abc123"},
+        attack_args={"name": "session", "value": "abc\r\nX-Admin: true"},
+        proof="X-Admin: true",
+        vuln_path=ATTACKS / "28_header_injection" / "vulnerable_server.py",
+        hardened_path=HARDENED / "safe_header_builder.py",
+        guardrail="guardrails.headers.safe_header_value — reject CR/LF + control characters",
+        explain="The value's CR/LF ends the Set-Cookie header and starts a forged 'X-Admin: true' "
+                "header on the vulnerable server. safe_header_value refuses any CR/LF or control "
+                "character, so the value stays a single line and no header is injected.",
+    ),
 ]
 
 CASES_BY_ID = {c.id: c for c in CASES}

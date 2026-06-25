@@ -240,6 +240,7 @@ class ChatPage(QWidget):
         "What is 19% of 4,200 plus the square root of 144?",
         "SHA-256 hash the text 'purplemcp'.",
         "What's the current weather in Tokyo?",
+        "Resolve the IP addresses for example.com.",
     ]
 
     def _build_suggestions(self) -> QWidget:

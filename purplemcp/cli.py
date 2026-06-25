@@ -451,6 +451,15 @@ def metrics(
     cm.add_row("attack", f"[green]TP {m.tp}[/green]", f"[red]FN {m.fn}[/red]")
     cm.add_row("benign", f"[yellow]FP {m.fp}[/yellow]", f"[green]TN {m.tn}[/green]")
     console.print(cm)
+
+    fam = Table(title="Recall by attack family")
+    fam.add_column("family", style="bold")
+    fam.add_column("attacks")
+    fam.add_column("blocked")
+    fam.add_column("recall")
+    for name, n, blocked, recall in m.by_family():
+        fam.add_row(name, str(n), str(blocked), f"{recall}%")
+    console.print(fam)
     console.print(
         f"[bold]ASR:[/bold] [red]{m.asr_vulnerable}%[/red] on the vulnerable server "
         f"→ [green]{m.asr_hardened}%[/green] after the guardrail."

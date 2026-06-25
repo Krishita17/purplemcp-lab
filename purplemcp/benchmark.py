@@ -235,6 +235,7 @@ class MetricRow:
     exploited_vulnerable: bool          # attack lands on the unguarded server
     attack_blocked: bool                # hardened twin blocks the attack (TP) else leak (FN)
     benign_allowed: Optional[bool]      # hardened twin allows the benign call (TN) else over-block (FP); None if no benign case
+    family: str = ""                    # attack family (MCP-specific vs classic appsec)
 
 
 @dataclass
@@ -302,6 +303,17 @@ class DetectionMetrics:
         """Attack Success Rate that survives the guardrail (lower is better)."""
         return self._pct(self.fn, self.tp + self.fn)
 
+    def by_family(self) -> list[tuple[str, int, int, float]]:
+        """Per-family breakdown: (family, attacks, blocked, recall%)."""
+        fams: dict[str, list[MetricRow]] = {}
+        for r in self.rows:
+            fams.setdefault(r.family or "?", []).append(r)
+        out: list[tuple[str, int, int, float]] = []
+        for fam, rows in sorted(fams.items()):
+            blocked = sum(1 for r in rows if r.attack_blocked)
+            out.append((fam, len(rows), blocked, self._pct(blocked, len(rows))))
+        return out
+
     def to_dict(self) -> dict:
         return {
             "confusion": {"tp": self.tp, "fp": self.fp, "tn": self.tn, "fn": self.fn},
@@ -365,11 +377,13 @@ async def run_detection_metrics(
             out = await _call(case.hardened_path, "hardened", case.tool, case.benign_args)
             _leaked, defended = _signals(out, "")  # benign refused == over-blocking (FP)
             benign_allowed = not defended
+        tax = TAX.get(case.id)
         metrics.rows.append(MetricRow(
             num=case.num, title=case.title,
             exploited_vulnerable=(v.kind == "bad"),
             attack_blocked=(ha.kind == "good"),
             benign_allowed=benign_allowed,
+            family=tax.family if tax else "?",
         ))
     return metrics
 

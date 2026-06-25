@@ -7,6 +7,14 @@ All notable changes to PurpleMCP. This project adheres loosely to
 ## [0.6.0] — Sorbet edition
 
 ### Added
+- **CRLF / HTTP header injection (module 28 → 28 total):** a CR/LF in a header value
+  forges a second header (response splitting, CWE-113); guarded by
+  `guardrails.headers.safe_header_value`. Full triple + hardened twin + arena case +
+  taxonomy + tests. Benchmark **22/22**. Guardrail library now **23** primitives.
+- **Per-family metrics breakdown** — `DetectionMetrics.by_family()` powers a "Recall by
+  attack family" table in `purplemcp metrics` and a bar chart in the dashboard metrics
+  panel (MCP-specific vs. classic appsec).
+- **DNS starter prompt** in the Chat Playground so the `dns_tools` server is one click away.
 - **Two more attack/defense modules → 27 total:** **26 Regex Injection** (CWE-625 —
   a caller-controlled `.*` widens a log search to hidden rows; guarded by
   `guardrails.saferegex.literal_search`) and **27 Open Redirect** (CWE-601 — a link

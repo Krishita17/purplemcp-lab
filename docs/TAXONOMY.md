@@ -1,6 +1,6 @@
 # PurpleMCP — threat taxonomy
 
-All **27** attack/defense modules mapped to the **OWASP Top 10 for LLM Applications (2025)**, **CWE**, and **MITRE ATLAS**. This file is generated from [`purplemcp/taxonomy.py`](../purplemcp/taxonomy.py) — run `python scripts/gen_taxonomy.py` to refresh, or `purplemcp taxonomy` to print it.
+All **28** attack/defense modules mapped to the **OWASP Top 10 for LLM Applications (2025)**, **CWE**, and **MITRE ATLAS**. This file is generated from [`purplemcp/taxonomy.py`](../purplemcp/taxonomy.py) — run `python scripts/gen_taxonomy.py` to refresh, or `purplemcp taxonomy` to print it.
 
 | # | Threat | Family | Sev | OWASP LLM (2025) | CWE | MITRE ATLAS | Guardrail |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -31,6 +31,7 @@ All **27** attack/defense modules mapped to the **OWASP Top 10 for LLM Applicati
 | 25 | XML External Entity (XXE) | Classic appsec, now model-reachable | HIGH | LLM05:2025 Improper Output Handling | CWE-611 | — | `safexml.py` |
 | 26 | Regex Injection | Classic appsec, now model-reachable | MEDIUM | LLM05:2025 Improper Output Handling | CWE-625 | — | `saferegex.py` |
 | 27 | Open Redirect | Classic appsec, now model-reachable | MEDIUM | LLM05:2025 Improper Output Handling | CWE-601 | — | `redirects.py` |
+| 28 | CRLF / Header Injection | Classic appsec, now model-reachable | MEDIUM | LLM05:2025 Improper Output Handling | CWE-113 | — | `headers.py` |
 
 ## OWASP LLM Top 10 coverage — 6/10 categories
 
@@ -38,7 +39,7 @@ All **27** attack/defense modules mapped to the **OWASP Top 10 for LLM Applicati
 - ✅ **LLM02:2025 Sensitive Information Disclosure** (2) — token-theft, data-exfiltration
 - ✅ **LLM03:2025 Supply Chain** (2) — rug-pull, tool-shadowing
 - ⬜ **LLM04:2025 Data and Model Poisoning** (0) — _(not yet demonstrated)_
-- ✅ **LLM05:2025 Improper Output Handling** (14) — output-injection, command-injection, path-traversal, sql-injection, template-injection, insecure-deserialization, unrestricted-file-write, eval-injection, zip-slip, csv-injection, argument-injection, xxe, regex-injection, open-redirect
+- ✅ **LLM05:2025 Improper Output Handling** (15) — output-injection, command-injection, path-traversal, sql-injection, template-injection, insecure-deserialization, unrestricted-file-write, eval-injection, zip-slip, csv-injection, argument-injection, xxe, regex-injection, open-redirect, header-injection
 - ✅ **LLM06:2025 Excessive Agency** (6) — ssrf, excessive-permissions, broken-access-control, weak-randomness, mass-assignment, jwt-none
 - ⬜ **LLM07:2025 System Prompt Leakage** (0) — _(not yet demonstrated)_
 - ⬜ **LLM08:2025 Vector and Embedding Weaknesses** (0) — _(not yet demonstrated)_

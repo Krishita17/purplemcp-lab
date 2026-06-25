@@ -379,3 +379,16 @@ class TestRedirects:
     def test_blocks_non_http_scheme(self):
         with pytest.raises(g.OpenRedirectError):
             g.safe_redirect("javascript:alert(1)", {"app.example.com"})
+
+
+class TestHeaders:
+    def test_allows_plain_value(self):
+        assert g.safe_header_value("abc123") == "abc123"
+
+    def test_blocks_crlf(self):
+        with pytest.raises(g.HeaderInjectionError):
+            g.safe_header_value("abc\r\nX-Admin: true")
+
+    def test_blocks_lone_newline(self):
+        with pytest.raises(g.HeaderInjectionError):
+            g.safe_header_value("abc\nInjected: 1")

@@ -127,6 +127,9 @@ ATTACKS: list[AttackMeta] = [
     AttackMeta("27", "open-redirect", "Open Redirect", FAMILY_CLASSIC, "MEDIUM",
                "A link builder trusts any host, so it redirects users off-site.",
                "27_open_redirect", "redirects.py", "open-redirect"),
+    AttackMeta("28", "header-injection", "CRLF / Header Injection", FAMILY_CLASSIC, "MEDIUM",
+               "A tool builds a header from input, so a CR/LF injects another header.",
+               "28_header_injection", "headers.py", "header-injection"),
 ]
 
 ATTACKS_BY_ID = {a.id: a for a in ATTACKS}

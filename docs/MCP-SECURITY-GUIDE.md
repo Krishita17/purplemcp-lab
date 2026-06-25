@@ -602,8 +602,8 @@ or print it with `purplemcp taxonomy`).
 | Family | Modules |
 | --- | --- |
 | **MCP-specific** | 01 Tool Poisoning · 02 Indirect Injection · 07 Rug Pull · 12 Tool Shadowing · 17 Output Injection |
-| **Classic appsec, model-reachable** | 03 Command Injection · 04 Path Traversal · 05 SSRF · 06 Token Theft · 08 Excessive Permissions · 09 Data Exfiltration · 10 SQL Injection · 11 Template Injection · 13 Insecure Deserialization · 14 IDOR · 15 File Write · 16 Weak Randomness · 18 Eval Injection · 19 Zip Slip · 20 Mass Assignment · 21 CSV Injection · 22 Unbounded Output · 23 Argument Injection · 24 Insecure JWT · 25 XXE · 26 Regex Injection · 27 Open Redirect |
+| **Classic appsec, model-reachable** | 03 Command Injection · 04 Path Traversal · 05 SSRF · 06 Token Theft · 08 Excessive Permissions · 09 Data Exfiltration · 10 SQL Injection · 11 Template Injection · 13 Insecure Deserialization · 14 IDOR · 15 File Write · 16 Weak Randomness · 18 Eval Injection · 19 Zip Slip · 20 Mass Assignment · 21 CSV Injection · 22 Unbounded Output · 23 Argument Injection · 24 Insecure JWT · 25 XXE · 26 Regex Injection · 27 Open Redirect · 28 CRLF Header Injection |
 
-**27 attack modules · 22 hardened twins · 22 guardrails · 6/10 OWASP-LLM categories.**
+**28 attack modules · 23 hardened twins · 23 guardrails · 6/10 OWASP-LLM categories.**
 
 *Happy hacking — and happy hardening.* 🟣

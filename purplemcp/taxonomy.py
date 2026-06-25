@@ -105,6 +105,8 @@ _REFS: dict[str, FrameworkRefs] = {
         "LLM05", "CWE-625", "Permissive Regular Expression (caller-controlled regex)"),
     "open-redirect": FrameworkRefs(
         "LLM05", "CWE-601", "URL Redirection to Untrusted Site (Open Redirect)"),
+    "header-injection": FrameworkRefs(
+        "LLM05", "CWE-113", "Improper Neutralization of CRLF in HTTP Headers (Response Splitting)"),
 }
 
 
