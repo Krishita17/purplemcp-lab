@@ -1,0 +1,15 @@
+name: EU AI Act Compliance Policy
+version: "1.0"
+description: "EU AI Act Articles 9 and 15 controls for MCP tool calls."
+rules:
+  - id: EUAIA-001
+    name: "Unsigned tools blocked in high-risk contexts"
+    condition: "context.risk_level == HIGH AND tool.crypto.verified == false"
+    action: BLOCK
+    article: "EU AI Act Art. 15"
+
+  - id: EUAIA-002
+    name: "Tool capability must match its declared schema"
+    condition: "tool.actual_capabilities != tool.declared_capabilities"
+    action: BLOCK
+    article: "EU AI Act Art. 9"

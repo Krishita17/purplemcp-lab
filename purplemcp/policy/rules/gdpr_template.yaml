@@ -1,0 +1,21 @@
+name: GDPR Compliance Policy
+version: "1.0"
+description: "GDPR Articles 5, 32, 33 controls for MCP tool calls."
+rules:
+  - id: GDPR-001
+    name: "PII cannot flow to an unverified publisher"
+    condition: "tool.publisher.trust_level == UNTRUSTED AND data.contains_pii == true"
+    action: BLOCK
+    article: "GDPR Art. 5(1)(f)"
+
+  - id: GDPR-002
+    name: "Credential access requires human approval"
+    condition: "tool.capabilities contains credential_access"
+    action: REQUIRE_HUMAN_APPROVAL
+    article: "GDPR Art. 32"
+
+  - id: GDPR-003
+    name: "External network call carrying PII requires audit + alert"
+    condition: "tool.capabilities contains network_request AND data.contains_pii == true"
+    action: LOG_AND_ALERT
+    article: "GDPR Art. 33"

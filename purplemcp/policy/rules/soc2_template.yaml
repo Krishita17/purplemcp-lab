@@ -1,0 +1,15 @@
+name: SOC 2 Compliance Policy
+version: "1.0"
+description: "SOC 2 CC6 logical access controls for MCP tool calls."
+rules:
+  - id: SOC2-CC6.1
+    name: "Filesystem access by an external tool is blocked"
+    condition: "tool.origin == external AND tool.capabilities contains filesystem_access"
+    action: BLOCK
+    article: "SOC 2 CC6.1"
+
+  - id: SOC2-CC6.3
+    name: "Command execution requires human approval"
+    condition: "tool.capabilities contains command_exec"
+    action: REQUIRE_HUMAN_APPROVAL
+    article: "SOC 2 CC6.3"
