@@ -41,6 +41,9 @@ results/bench-*.json
 results/bench-*.md
 results/metrics-*.json
 results/metrics-*.md
+results/metrics-*.csv
+results/susceptibility-*.json
+results/paper-table-*.md
 purplemcp.sarif
 
 # ---- OS / editor noise ----

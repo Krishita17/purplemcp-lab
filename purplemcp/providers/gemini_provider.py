@@ -11,23 +11,77 @@ We pass MCP's JSON Schema straight through via ``parameters_json_schema``.
 
 from __future__ import annotations
 
+import os
+
 from .base import Message, Provider, ToolCall, ToolSpec
+
+#: A real Google AI Studio / Gemini API key always starts with this prefix.
+#: OAuth access tokens (which start with "AQ.") are a different credential type
+#: and produce 401 UNAUTHENTICATED against the generative-language API.
+GEMINI_KEY_PREFIX = "AIzaSy"
+
+
+def verify_google_api_key() -> tuple[bool, str, str | None]:
+    """Validate the GOOGLE_API_KEY env var without making a network call.
+
+    Returns ``(ok, message, key)``. Per the project's Gemini contract the key
+    MUST come from ``GOOGLE_API_KEY`` and MUST start with ``AIzaSy`` — any other
+    format (e.g. an ``AQ.`` OAuth token) is rejected with an actionable message
+    so the caller can skip Gemini gracefully instead of crashing on a 401.
+    """
+    key = os.environ.get("GOOGLE_API_KEY")
+    if not key:
+        return (
+            False,
+            "GOOGLE_API_KEY is not set. Get a free key at "
+            "https://aistudio.google.com/apikey (it starts with 'AIzaSy').",
+            None,
+        )
+    if not key.startswith(GEMINI_KEY_PREFIX):
+        return (
+            False,
+            f"GOOGLE_API_KEY format is wrong: it starts with '{key[:6]}'. "
+            f"A real Gemini key starts with '{GEMINI_KEY_PREFIX}'. "
+            "An 'AQ.' key is an OAuth token, not an API key — get the correct "
+            "one from https://aistudio.google.com/apikey.",
+            None,
+        )
+    return (True, "GOOGLE_API_KEY looks valid.", key)
 
 
 class GeminiProvider(Provider):
     name = "gemini"
 
-    def __init__(self, model: str, api_key: str | None = None) -> None:
+    def __init__(
+        self,
+        model: str,
+        api_key: str | None = None,
+        temperature: float | None = None,
+    ) -> None:
         super().__init__(model)
         from google import genai  # lazy
         from google.genai import types
 
         if not api_key:
             raise RuntimeError(
-                "Gemini API key not set. Put GEMINI_API_KEY in your .env file."
+                "Gemini API key not set. Put GOOGLE_API_KEY in your .env file "
+                "(get one at https://aistudio.google.com/apikey)."
             )
         self._types = types
         self._client = genai.Client(api_key=api_key)
+        self.temperature = temperature
+
+    def verify_ready(self) -> str:
+        """Make one tiny real call to prove the key works before probing.
+
+        Raises on any auth/transport failure; returns the model's reply on
+        success so the caller can print proof of a live connection.
+        """
+        resp = self._client.models.generate_content(
+            model=self.model, contents="respond with only the word READY"
+        )
+        text = (getattr(resp, "text", None) or "").strip()
+        return text or "(empty response)"
 
     @staticmethod
     def _split_system(messages: list[Message]) -> tuple[str | None, list[Message]]:
@@ -102,6 +156,8 @@ class GeminiProvider(Provider):
         system, conv = self._split_system(messages)
 
         cfg_kwargs: dict = {}
+        if self.temperature is not None:
+            cfg_kwargs["temperature"] = self.temperature
         if system:
             cfg_kwargs["system_instruction"] = system
         native_tools = self._tools(tools)

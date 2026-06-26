@@ -43,6 +43,10 @@ class ProviderConfig(BaseModel):
     model: str
     api_key: Optional[str] = None
     base_url: Optional[str] = None
+    # Sampling temperature. ``None`` means "use the backend's own default".
+    # The susceptibility probes set this to 0.7 so repeated runs can vary —
+    # without it every run is deterministic and the experiment is meaningless.
+    temperature: Optional[float] = None
 
     @property
     def ready(self) -> bool:
@@ -79,8 +83,10 @@ def load_providers() -> dict[str, ProviderConfig]:
         ),
         "gemini": ProviderConfig(
             name="gemini",
-            model=_env("GEMINI_MODEL", "gemini-1.5-pro"),
-            api_key=_env("GEMINI_API_KEY") or None,
+            model=_env("GEMINI_MODEL", "gemini-2.0-flash"),
+            # Canonical var is GOOGLE_API_KEY (a real key starts with "AIzaSy").
+            # GEMINI_API_KEY is accepted as a legacy fallback.
+            api_key=_env("GOOGLE_API_KEY") or _env("GEMINI_API_KEY") or None,
         ),
         "openrouter": ProviderConfig(
             name="openrouter",

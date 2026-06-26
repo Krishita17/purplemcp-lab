@@ -17,7 +17,7 @@ def build_provider(cfg: ProviderConfig) -> Provider:
     if cfg.name == "ollama":
         from .ollama_provider import OllamaProvider
 
-        return OllamaProvider(cfg.model, base_url=cfg.base_url)
+        return OllamaProvider(cfg.model, base_url=cfg.base_url, temperature=cfg.temperature)
     if cfg.name == "anthropic":
         from .anthropic_provider import AnthropicProvider
 
@@ -29,7 +29,7 @@ def build_provider(cfg: ProviderConfig) -> Provider:
     if cfg.name == "gemini":
         from .gemini_provider import GeminiProvider
 
-        return GeminiProvider(cfg.model, api_key=cfg.api_key)
+        return GeminiProvider(cfg.model, api_key=cfg.api_key, temperature=cfg.temperature)
     if cfg.name == "openrouter":
         from .openrouter_provider import OpenRouterProvider
 

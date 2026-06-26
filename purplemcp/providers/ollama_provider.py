@@ -10,11 +10,17 @@ from .base import Message, Provider, ToolCall, ToolSpec
 class OllamaProvider(Provider):
     name = "ollama"
 
-    def __init__(self, model: str, base_url: str | None = None) -> None:
+    def __init__(
+        self,
+        model: str,
+        base_url: str | None = None,
+        temperature: float | None = None,
+    ) -> None:
         super().__init__(model)
         import ollama  # lazy: only needed when this provider is used
 
         self._client = ollama.Client(host=base_url) if base_url else ollama.Client()
+        self.temperature = temperature
 
     def _to_native(self, messages: list[Message]) -> list[dict]:
         out: list[dict] = []
@@ -54,10 +60,14 @@ class OllamaProvider(Provider):
         ]
 
     def complete(self, messages: list[Message], tools: list[ToolSpec]) -> Message:
+        options = None
+        if self.temperature is not None:
+            options = {"temperature": self.temperature}
         resp = self._client.chat(
             model=self.model,
             messages=self._to_native(messages),
             tools=self._to_native_tools(tools) if tools else None,
+            options=options,
         )
         native = resp.message
         calls: list[ToolCall] = []

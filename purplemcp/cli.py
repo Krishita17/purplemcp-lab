@@ -352,14 +352,17 @@ def bench(
     provider: Optional[str] = typer.Option(
         None, "--provider", "-p", help="Also run the model-susceptibility eval with this provider."
     ),
-    model: Optional[str] = typer.Option(None, "--model", "-m"),
+    model: Optional[list[str]] = typer.Option(
+        None, "--model", "-m",
+        help="Model(s) for the susceptibility eval. Repeatable for a cross-model table.",
+    ),
     out: str = typer.Option("results", "--out", help="Directory for the JSON + Markdown reports."),
     save: bool = typer.Option(True, "--save/--no-save", help="Write JSON + Markdown reports."),
 ) -> None:
     """Run PurpleMCP-Bench: guardrail effectiveness (+ optional model susceptibility)."""
     from pathlib import Path
 
-    from .benchmark import run_guardrail_benchmark, run_model_benchmark, write_reports
+    from .benchmark import run_guardrail_benchmark, write_reports
 
     ensure_sandbox()
     console.print("[bold]PurpleMCP-Bench[/bold] — guardrail effectiveness\n")
@@ -382,92 +385,115 @@ def bench(
         f"([green]{report.effectiveness_pct}%[/green]) blocked by the hardened twin"
     )
 
-    if provider:
-        providers = load_providers()
-        if provider not in providers:
-            err.print(f"[red]Unknown provider '{provider}'.[/red] One of: {', '.join(providers)}")
-            raise typer.Exit(2)
-        cfg = providers[provider]
-        if model:
-            cfg = cfg.model_copy(update={"model": model})
-        if not cfg.ready:
-            err.print(f"[red]Provider '{provider}' is not ready.[/red] Set its API key in .env.")
-            raise typer.Exit(2)
-        console.print(
-            f"\n[bold]Model susceptibility[/bold] — {provider}/{cfg.model} "
-            "[dim](experimental; results vary by model/run)[/dim]"
-        )
-        model_results = _run_async(run_model_benchmark(cfg))
-        report.model_provider, report.model_name, report.model_results = provider, cfg.model, model_results
-        for m in model_results:
-            if m.manipulated is None:
-                console.print(f"  [dim]{m.title}: error — {m.error}[/dim]")
-            else:
-                tag = "[red]manipulated[/red]" if m.manipulated else "[green]resisted[/green]"
-                console.print(f"  {m.title}: {tag}  [dim]tools={m.tools_called or '—'}[/dim]")
-
     if save:
         json_path, md_path = write_reports(report, Path(out))
         console.print(f"\n[green]wrote[/green] {json_path}\n[green]wrote[/green] {md_path}")
 
+    # ----------------------------------------------------------------- #
+    #  Model-susceptibility probes (8 attack classes × 3 runs @ temp 0.7)
+    # ----------------------------------------------------------------- #
+    if provider:
+        from .benchmark import run_detection_metrics
+        from .probes import (
+            render_cross_model_table,
+            render_paper_report,
+            resolve_targets,
+            run_susceptibility,
+            write_metrics_csv,
+            write_susceptibility_reports,
+        )
+
+        console.print(
+            "\n[bold]Model susceptibility[/bold] "
+            "[dim](8 attack classes · 3 runs each · temperature 0.7 · real LLM calls)[/dim]"
+        )
+        targets, skips = resolve_targets(provider, list(model) if model else None)
+        for s in skips:
+            console.print(f"  [yellow]skipping {s['target']}[/yellow]: {s['reason']}")
+        if not targets:
+            err.print(
+                "[red]No model backends are available to probe.[/red] "
+                "Start Ollama (`ollama serve`) or set a valid GOOGLE_API_KEY."
+            )
+        else:
+            ge = {
+                "total_attacks": report.n_cases,
+                "blocked_by_hardened_twin": report.n_correct,
+                "effectiveness_rate": round(report.n_correct / report.n_cases, 3)
+                if report.n_cases else 0.0,
+            }
+            sus = _run_async(run_susceptibility(
+                targets, guardrail_effectiveness=ge, skipped=skips, console=console
+            ))
+            # Guardrail confusion matrix (real runs) so the paper report has
+            # precision/recall/F1/accuracy, and `metrics` can re-render later.
+            console.print("\n[dim]scoring guardrails as a classifier (confusion matrix)…[/dim]")
+            dm = _run_async(run_detection_metrics(on_case=None))
+            sus.guardrail_metrics = {**dm.to_dict(), "n_attacks": dm.n_attacks}
+            console.print()
+            render_cross_model_table(sus, console)
+            console.print()
+            render_paper_report(sus, console)
+            if save:
+                sj, sm = write_susceptibility_reports(sus, Path(out))
+                csv_path = write_metrics_csv(sus, Path(out))
+                console.print(
+                    f"\n[green]wrote[/green] {sj}\n[green]wrote[/green] {sm}"
+                    f"\n[green]wrote[/green] {csv_path}"
+                )
+
 
 @app.command()
 def metrics(
-    out: str = typer.Option("results", "--out", help="Directory for the JSON + Markdown report."),
-    save: bool = typer.Option(False, "--save/--no-save", help="Write a JSON + Markdown report."),
-    json_out: bool = typer.Option(False, "--json", help="Print machine-readable JSON instead of a table."),
+    out: str = typer.Option("results", "--out", help="Directory to read results from / write the CSV to."),
+    save: bool = typer.Option(False, "--save/--no-save", help="Write the metrics CSV."),
+    json_out: bool = typer.Option(False, "--json", help="Print the loaded report as JSON instead of the tables."),
 ) -> None:
-    """Score the guardrails as detectors: accuracy / precision / recall / ASR (real runs)."""
+    """Paper-ready metrics: per-model ASR, confusion matrix, precision/recall/F1.
+
+    Reads the most recent ``results/susceptibility-*.json`` and re-renders the
+    full report — so the paper author can regenerate the tables anytime without
+    re-running the benchmark. If that file has no stored guardrail confusion
+    matrix (older runs), it is recomputed live from real guardrail runs.
+    """
+    import glob
     import json as _json
     from pathlib import Path
 
-    from .benchmark import run_detection_metrics, write_metrics_report
+    from .benchmark import run_detection_metrics
+    from .probes import SusceptibilityReport, render_paper_report, write_metrics_csv
 
     ensure_sandbox()
-    m = _run_async(run_detection_metrics(
-        on_case=None if json_out else (lambda i, n, t: err.print(f"[dim]  [{i}/{n}] {t}[/dim]"))
-    ))
+    out_dir = Path(out)
+    files = sorted(glob.glob(str(out_dir / "susceptibility-*.json")))
+    if not files:
+        err.print(
+            f"[red]No susceptibility-*.json found in {out_dir}/.[/red] "
+            "Run:  purplemcp bench --provider ollama -m qwen2.5 --save"
+        )
+        raise typer.Exit(2)
+
+    latest = Path(files[-1])
+    report = SusceptibilityReport.from_dict(_json.loads(latest.read_text(encoding="utf-8")))
+    console.print(f"[dim]loaded {latest}[/dim]")
+
+    # If the saved run didn't store the guardrail confusion matrix, compute it now.
+    if not report.guardrail_metrics:
+        console.print("[dim]no stored guardrail metrics — scoring guardrails live…[/dim]")
+        dm = _run_async(run_detection_metrics(
+            on_case=lambda i, n, t: err.print(f"[dim]  [{i}/{n}] {t}[/dim]")
+        ))
+        report.guardrail_metrics = {**dm.to_dict(), "n_attacks": dm.n_attacks}
 
     if json_out:
-        print(_json.dumps(m.to_dict(), indent=2))
+        print(_json.dumps(report.to_dict(), indent=2))
         raise typer.Exit(0)
 
-    summary = Table(title="Guardrail detection metrics (real runs)")
-    summary.add_column("metric", style="bold")
-    summary.add_column("value")
-    for label, value in (
-        ("accuracy", f"{m.accuracy}%"), ("precision", f"{m.precision}%"),
-        ("recall", f"{m.recall}%"), ("F1", f"{m.f1}%"),
-        ("ASR — vulnerable", f"[red]{m.asr_vulnerable}%[/red]"),
-        ("ASR — hardened", f"[green]{m.asr_hardened}%[/green]"),
-    ):
-        summary.add_row(label, value)
-    console.print(summary)
-
-    cm = Table(title="Confusion matrix")
-    cm.add_column("", style="dim")
-    cm.add_column("predicted block")
-    cm.add_column("predicted allow")
-    cm.add_row("attack", f"[green]TP {m.tp}[/green]", f"[red]FN {m.fn}[/red]")
-    cm.add_row("benign", f"[yellow]FP {m.fp}[/yellow]", f"[green]TN {m.tn}[/green]")
-    console.print(cm)
-
-    fam = Table(title="Recall by attack family")
-    fam.add_column("family", style="bold")
-    fam.add_column("attacks")
-    fam.add_column("blocked")
-    fam.add_column("recall")
-    for name, n, blocked, recall in m.by_family():
-        fam.add_row(name, str(n), str(blocked), f"{recall}%")
-    console.print(fam)
-    console.print(
-        f"[bold]ASR:[/bold] [red]{m.asr_vulnerable}%[/red] on the vulnerable server "
-        f"→ [green]{m.asr_hardened}%[/green] after the guardrail."
-    )
+    render_paper_report(report, console)
 
     if save:
-        json_path, md_path = write_metrics_report(m, Path(out))
-        console.print(f"\n[green]wrote[/green] {json_path}\n[green]wrote[/green] {md_path}")
+        csv_path = write_metrics_csv(report, out_dir)
+        console.print(f"\n[green]wrote[/green] {csv_path}")
 
 
 @app.command()
